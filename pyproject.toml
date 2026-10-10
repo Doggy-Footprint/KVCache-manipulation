@@ -1,0 +1,27 @@
+[project]
+name = "kvmeaning"
+version = "0.1.0"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "torch>=2.4",
+  "transformers>=4.51",
+  "safetensors",
+  "numpy",
+  "scikit-learn",
+  "umap-learn",
+  "ruptures",
+  "matplotlib",
+]
+
+[dependency-groups]
+dev = ["pytest", "jupyter"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kvmeaning"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
