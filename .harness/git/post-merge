@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+common_dir="$(git rev-parse --git-common-dir)"
+local_hook="$common_dir/hooks/post-merge"
+if [ -x "$local_hook" ]; then
+  exec "$local_hook" "$@"
+fi

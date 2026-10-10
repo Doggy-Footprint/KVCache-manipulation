@@ -1,2 +1,7 @@
 .env
 .venv
+agent-docs/specs/.active
+agent-docs/specs/.running/
+agent-docs/specs/.seed/
+.harness/sessions/.running/
+.harness/**/__pycache__
