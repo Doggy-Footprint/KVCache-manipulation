@@ -1,0 +1,36 @@
+{"id": "soccer-00", "topic": "soccer", "text": "The goalkeeper is the only player allowed to handle the ball, and only inside their own penalty area."}
+{"id": "soccer-01", "topic": "soccer", "text": "A corner kick is awarded when the ball crosses the goal line after last touching a defender."}
+{"id": "soccer-02", "topic": "soccer", "text": "Wingers stretch the defense by staying wide and delivering crosses into the box for the striker."}
+{"id": "soccer-03", "topic": "soccer", "text": "A yellow card is a caution, and a second yellow in the same match results in a red card and a sending off."}
+{"id": "soccer-04", "topic": "soccer", "text": "The World Cup is held every four years and brings together national teams from every continent."}
+{"id": "soccer-05", "topic": "soccer", "text": "Clubs in European leagues can be relegated to a lower division if they finish near the bottom of the table."}
+{"id": "soccer-06", "topic": "soccer", "text": "A through ball splits two defenders and lets a forward run onto it behind the back line."}
+{"id": "soccer-07", "topic": "soccer", "text": "Center-backs win headers, block shots, and organize the defensive line to keep it compact."}
+{"id": "soccer-08", "topic": "soccer", "text": "A free kick from the edge of the box is often curled over the wall and toward the top corner."}
+{"id": "soccer-09", "topic": "soccer", "text": "Possession-based teams pass patiently through midfield, waiting for gaps to open in a tired defense."}
+{"id": "soccer-10", "topic": "soccer", "text": "The video assistant referee reviews goals, penalties, and red cards to correct clear errors."}
+{"id": "soccer-11", "topic": "soccer", "text": "A hat trick means a single player scored three goals in one match."}
+{"id": "baseball-00", "topic": "baseball", "text": "A pitcher throws from the mound, and the batter tries to hit the ball into fair territory."}
+{"id": "baseball-01", "topic": "baseball", "text": "Three strikes make an out, while four balls let the batter walk to first base."}
+{"id": "baseball-02", "topic": "baseball", "text": "A home run is hit over the outfield fence, letting the batter and all runners score."}
+{"id": "baseball-03", "topic": "baseball", "text": "The catcher calls pitches with hand signals and frames close pitches to earn strike calls."}
+{"id": "baseball-04", "topic": "baseball", "text": "A double play records two outs on one batted ball, often from shortstop to second to first."}
+{"id": "baseball-05", "topic": "baseball", "text": "Starting pitchers usually work every fifth day, with relievers covering the late innings."}
+{"id": "baseball-06", "topic": "baseball", "text": "A stolen base happens when a runner advances while the pitcher delivers the ball to the plate."}
+{"id": "baseball-07", "topic": "baseball", "text": "The World Series is the championship played between the winners of the American and National Leagues."}
+{"id": "baseball-08", "topic": "baseball", "text": "Batting average divides hits by at-bats, while on-base percentage also counts walks."}
+{"id": "baseball-09", "topic": "baseball", "text": "A curveball breaks downward as it approaches the plate because of the topspin applied by the pitcher."}
+{"id": "baseball-10", "topic": "baseball", "text": "A sacrifice bunt gives up an out to move a runner into scoring position."}
+{"id": "baseball-11", "topic": "baseball", "text": "Each team gets nine innings, with three outs per half inning."}
+{"id": "quantum-00", "topic": "quantum", "text": "The wavefunction assigns a complex amplitude to every possible state of a quantum system."}
+{"id": "quantum-01", "topic": "quantum", "text": "The Schrödinger equation describes how a wavefunction evolves in time."}
+{"id": "quantum-02", "topic": "quantum", "text": "Electrons in an atom occupy discrete energy levels rather than any arbitrary energy."}
+{"id": "quantum-03", "topic": "quantum", "text": "The double-slit experiment shows interference even when particles are sent through one at a time."}
+{"id": "quantum-04", "topic": "quantum", "text": "Spin is an intrinsic form of angular momentum that takes only quantized values."}
+{"id": "quantum-05", "topic": "quantum", "text": "The Pauli exclusion principle forbids two identical fermions from occupying the same quantum state."}
+{"id": "quantum-06", "topic": "quantum", "text": "Photons carry energy proportional to their frequency, as explained by Planck's constant."}
+{"id": "quantum-07", "topic": "quantum", "text": "Decoherence describes how interaction with the environment suppresses quantum interference."}
+{"id": "quantum-08", "topic": "quantum", "text": "A qubit can be represented as a point on the Bloch sphere."}
+{"id": "quantum-09", "topic": "quantum", "text": "Bell's theorem shows that no local hidden-variable theory can reproduce all quantum predictions."}
+{"id": "quantum-10", "topic": "quantum", "text": "Operators on a Hilbert space represent observable quantities such as energy and momentum."}
+{"id": "quantum-11", "topic": "quantum", "text": "Quantum field theory treats particles as excitations of underlying fields."}
