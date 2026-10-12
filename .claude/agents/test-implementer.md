@@ -19,7 +19,7 @@ Use the approved Verification Obligations and Quality Requirements as the shared
 
 For each obligation, identify the observation, independent expected-value source, concrete escaping defect, and assertion or review artifact that rejects it. Use public observation boundaries and labelled parameterized cases. Control external boundaries and test order. Do not guess unspecified expectations or dependencies, or weaken a threshold or measurement context. A review procedure must name inputs, observation, expected result and a repeatable artifact.
 
-Check whether a constant result, ignored input, omitted transition or wrong quality threshold could satisfy the evidence. Propose the strongest distinct defect classes for mutation checks; do not inject them. On correction, trace the defective pattern or helper through all declared obligations, repair affected siblings in one batch, and report checked siblings needing no change. Stay within approved scope. Return a complete replacement map, changed evidence dependencies, and prior acceptance that needs invalidation; main and verifier own acceptance decisions.
+Check whether a constant result, ignored input, omitted transition or wrong quality threshold could satisfy the evidence. Propose the strongest distinct defect classes for mutation checks and oracles for declared fuzz surfaces; do not inject or run them. On correction, trace the defective pattern or helper through all declared obligations, repair affected siblings in one batch, and report checked siblings needing no change. Stay within approved scope. Return a complete replacement map, changed evidence dependencies, and prior acceptance that needs invalidation; main and verifier own acceptance decisions.
 
 ## Gaps and checks
 

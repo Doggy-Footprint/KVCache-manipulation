@@ -13,9 +13,9 @@ A spec is the approved, versioned source of truth for one workflow run. The main
 2. Archived path: `agent-docs/spec-logs/<same-file-name>`.
 3. `specs/` and `spec-logs/` are excluded from Index & Staleness Management.
 4. Frontmatter fields are `version`, `run_id`, `status`, `base_commit`, `max_verifier_invocations`, and `handoff`. Status is `draft`, `active`, `complete`, `limit`, or `aborted`; use `handoff: none` when absent.
-5. Amendment increments `version` and adds a Version Log entry. Request approval for changed behavior, quality targets, or verification policy by explaining current → proposed expectations, why they must change, and their impact.
-6. Before dispatch, obtain whole-spec approval. For every spec approval or decision request, link its path and version, state what the user is deciding, and explain behavior, scope, and acceptance criteria in plain language with a concrete example; explain necessary technical terms. Distinguish whole-spec approval from an amendment or unresolved choice. Pause on unresolved required decisions; use `requirement-oracle` when the user needs evidence or options to decide.
-7. Only after the user explicitly delegates an unresolved required decision may the main agent choose a default. Preserve safety, security, compatibility, data, and existing observable behavior in that order; record the choice, evidence, uncertainty, and delegation in `# Assumptions and Defaults`. Optional quality characteristics may be excluded with a recorded reason.
+5. Amendment increments `version` and adds a Version Log entry, prefixed `[intent-mismatch]` when an intent mismatch found after approval forced it. When it changes a brief item (understanding, an answer, a listed default, or the plain-words quality list), re-brief before continuing: show current → proposed, why it must change, and its impact. Log contract-only changes such as a technique, coverage-item naming, or an obligation split without interrupting the user.
+6. Before drafting, run the understanding round. Before dispatch, present the brief and obtain approval; approval covers every listed default the user did not veto. Pause on unanswered Ask items; use `requirement-oracle` when the user needs evidence or options to decide.
+7. Main chooses a default only by listing it in a brief. Prefer general good practice unless the user or project states otherwise, and preserve safety, security, compatibility, data, and existing observable behavior in that order. Record each choice, its evidence and uncertainty in `# Assumptions and Defaults`, with approval as `brief v<n> — approved`, `vetoed → <answer>`, or `user answer`. Optional quality characteristics may be excluded with a recorded reason.
 
 ## Required format
 
@@ -42,6 +42,8 @@ Implementation: <comma-separated repo paths>
 Tests: <comma-separated repo paths>
 Test command: <one shell command covering all automated functional and quality checks; fails when a structure-based coverage target is missed>
 Review evidence: <named procedure/output, or none — reason>
+Fuzzing: <tool, harness, surface, oracle (crash / property / differential), seed, budget — or none — reason>
+Mutation tool: <tool and command, sample cap and seed, survival threshold (default 40%)>
 
 # Signatures
 <signature per line>
@@ -79,7 +81,7 @@ Review evidence: <named procedure/output, or none — reason>
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
 # Assumptions and Defaults
-| id | decision | evidence and uncertainty | user approval or explicit delegation |
+| id | decision | evidence and uncertainty | brief v<n> — approved / vetoed → <answer> / user answer |
 | --- | --- | --- | --- |
 
 # Traceability
@@ -106,9 +108,26 @@ Execution ledger (append attempts; preserve failed approaches):
 - <what changed and the evidence or decision that forced it>
 ````
 
-Every intent, requirement, Case, quality requirement, obligation, and assumption has a stable id. Each applicable quality characteristic has at least one quality requirement. Each quality requirement defines the measured property and context, method and input quantities, unit, threshold and pass direction, evidence procedure, and source. ISO/IEC 25023 supplies measure concepts and ISO/IEC/IEEE 29119-4 supplies test design techniques with their coverage measures; neither supplies project-specific pass thresholds or coverage targets. The user approves both.
+Every intent, requirement, Case, quality requirement, obligation, and assumption has a stable id. Each applicable quality characteristic has at least one quality requirement. Each quality requirement defines the measured property and context, method and input quantities, unit, threshold and pass direction, evidence procedure, and source. ISO/IEC 25023 supplies measure concepts and ISO/IEC/IEEE 29119-4 supplies test design techniques with their coverage measures; neither supplies project-specific pass thresholds or coverage targets. The brief lists both for the user to approve or veto.
 
 `level` is `normal`, `boundary`, `error`, or `edge`; include every level or a `none — <reason>` row. Error rows name both signal and post-failure state. Implementation and Tests paths are disjoint. The implementer never reads Tests; test roles never read Implementation.
+
+# Brief
+
+The brief is how the user approves intent; the spec is the contract for subagents. Briefs exist only in chat: never write them into the spec or any other file, so later sessions read decisions, not briefs.
+
+Write for a developer with 4 years of experience, explain anything beyond that, and link the spec path and version for deeper review.
+
+**Understanding round.** Before drafting, state "Here's what I understood": what the project is, where this task fits, what success looks like, and what this task will NOT do. Build it from every available source (project definition, README, docs, code, history, prior specs and handoffs, the conversation), not from any single required file. Include blocking Ask items. Draft only after the user confirms or corrects it.
+
+**Approval brief.** Classify every decision the spec depends on:
+- *Ask*: not easy to fix later, or contradicts what the user or project stated. Not easy to fix later means persisted data, schemas or formats; interfaces others depend on (CLI flags, API fields, file formats); external side effects (sending, deleting, publishing); security boundaries; and money.
+- *Decided for you*: one line each with the choice, why, and how to change it later. Thresholds, coverage targets, and test techniques normally belong here.
+- *New concept*: a decision that depends on knowledge the user may lack. First ask whether the user already knows the concept; ask fresh every run. Then give one sentence on what it is, why it matters here, a concrete consequence of each option, and the choice, treated as Ask or Decided by the rules above.
+
+Ask at most 3 items per round, ranked by cost to reverse times the chance the user disagrees. Overflow becomes Decided unless it is not easy to fix later; such overflow waits for the next round.
+
+State quality expectations in plain words for applicable characteristics only (for example "must not crash on a broken log line"); mention a non-applicable one only when that may surprise the user. ISO terms stay in the spec.
 
 # Verification model
 
@@ -122,7 +141,11 @@ Derive obligations from every in-scope requirement, including errors and quality
 
 Evidence is sufficient when it observes the required behavior at the declared surface and layer, uses an independent expected result, distinguishes the specified failure from success, and meets the approved coverage target. A test name or filled map is not proof. Additional examples alone do not establish a gap: a blocking finding must identify a required obligation and a concrete violating behavior the current evidence fails to reject, or cite a precise conflict or omission in the approved requirements.
 
-Prefer automated evidence. Review evidence needs a repeatable procedure, inputs, observation, expected result and named artifact. Mutation evidence supplements these checks. Main selects the 2–3 strongest distinct defect classes from the audit, or all if fewer, including on an initial pass with no findings, and records why they are strongest. A mutation counts only if it executes and the intended assertion detects it; setup failures and unrelated failures are inconclusive.
+Prefer automated evidence. Review evidence needs a repeatable procedure, inputs, observation, expected result and named artifact. Mutation evidence supplements these checks. Main selects the 8–10 strongest distinct defect classes from the audit, or all if fewer, including on an initial pass with no findings, and records why they are strongest. A mutation counts only if it executes and the intended assertion detects it; setup failures and unrelated failures are inconclusive.
+
+Main runs a declared fuzz harness for its full budget with the recorded seed. Each crash or oracle violation becomes a finding whose minimized reproducer reaches test roles as input and observed behavior only. Early stops, timeouts, and setup failures are inconclusive.
+
+The mutation tool complements the hand mutations and runs after them. It mutates only Implementation lines changed since `base_commit`, sampling with the recorded seed above the cap. Survival rate is survived over executed mutants. Above the threshold (default 40%, Stryker's low mark), skip triage and record one non-blocking advisory finding with the rate. Otherwise restore every file and send survivors in batches to `mutant-triager` with the spec path and each mutant's id, diff, file and line. Verdicts route as follows: `declared` is an obligation evidence gap, `undeclared` a spec challenge, and `insufficient context` main resolves itself. Main rechecks `equivalent` verdicts on obligation-tied code plus a random sample of the rest; one overturned verdict reopens every `equivalent` in that batch. Timeouts and tool failures are inconclusive.
 
 Carry audit state between fresh verifiers. Acceptance is scoped to the spec version, evidence revision and dependencies, not a permanent exemption. Main marks affected entries invalidated after changes to requirements, tests, helpers, procedures or implementation behavior; record the impact and why other entries remain valid. Changed shared helpers can invalidate several obligations. A verifier checks this impact assessment and reopens acceptance only with new evidence of a defect, changed dependency or missed requirement. Never inherit acceptance blindly or restart scope derivation merely because the verifier is fresh.
 
@@ -140,15 +163,16 @@ python3 .harness/bin/workflow_marker.py phase --run-id ID --phase implement_test
 python3 .harness/bin/workflow_marker.py phase --run-id ID --phase verify
 python3 .harness/bin/workflow_marker.py phase --run-id ID --phase amend
 python3 .harness/bin/workflow_marker.py verifier --run-id ID --round N --result pass|retry|limit --findings N --seeds-run N --seeds-detected N
+python3 .harness/bin/workflow_marker.py verification --run-id ID --fuzz-execs N --fuzz-violations N --mutants N --killed N --survived N --equivalent N --overturned N
 python3 .harness/bin/workflow_marker.py end --run-id ID --status complete|limit|handoff|aborted
 ```
 
-Emit `start` before the initial dispatch. Emit `implement_test` before the parallel roles. Emit `verify` before dispatching a verifier. Emit one `verifier` marker after every verifier result. Emit `amend` before every amendment or correction. Emit `end complete` after completion, `end limit` when the verifier budget is exhausted, `end handoff` for a nonterminal handoff, and `end aborted` after an approved recovery abort. Do not emit markers for ordinary tool activity.
+Emit `start` before the initial dispatch. Emit `implement_test` before the parallel roles. Emit `verify` before dispatching a verifier. Emit one `verifier` marker after every verifier result. Emit one `verification` marker after each fuzz and mutation-tool pass; `--equivalent` counts accepted `equivalent` verdicts and `--overturned` reversed ones. Emit `amend` before every amendment or correction. Emit `end complete` after completion, `end limit` when the verifier budget is exhausted, `end handoff` for a nonterminal handoff, and `end aborted` after an approved recovery abort. Do not emit markers for ordinary tool activity.
 
 # Workflow
 
-1. **Recover or ground (main).** Before creating a spec, inspect `specs/`. If an active spec exists, do not start another workflow. If its handoff is valid, resume only when requested. Without a handoff, compare `base_commit` to HEAD, summarize progress and drift, and ask the user whether to resume or archive it as aborted. Read deciding code yourself; delegate only location discovery. For pre-0.10 specs, reconcile obligations and audit state with the verification model before dispatch, giving each obligation a technique, coverage items and target. Do not infer prior acceptance from a passing suite. Obtain approval for changed verification policy and preserve invocation counts and history.
-2. **Draft and approve (main).** Derive functional requirements and all nine quality applicability decisions. Use `requirement-oracle` for decisions the user cannot assess. Define measures, thresholds, 29119-4 techniques, coverage items and targets, evidence, and traceability with `max_verifier_invocations: 2`. Obtain whole-spec approval, set status `active`, then run and check: `python3 .harness/bin/spec_lifecycle.py start --spec PATH --run-id ID`. Emit telemetry start only after lifecycle start succeeds.
+1. **Recover or ground (main).** Before creating a spec, inspect `specs/`. If an active spec exists, do not start another workflow. If its handoff is valid, resume only when requested. Without a handoff, compare `base_commit` to HEAD, summarize progress and drift, and ask the user whether to resume or archive it as aborted. Read deciding code yourself; delegate only location discovery. For pre-0.10 specs, reconcile obligations and audit state with the verification model before dispatch, giving each obligation a technique, coverage items and target. Do not infer prior acceptance from a passing suite. Apply Identity and lifecycle rule 5 to changed verification policy, and preserve invocation counts and history.
+2. **Understand, draft, and approve (main).** Run the understanding round and wait for the user's confirmation or correction. Derive functional requirements and all nine quality applicability decisions. Use `requirement-oracle` for decisions the user cannot assess. Define measures, thresholds, 29119-4 techniques, coverage items and targets, evidence, and traceability with `max_verifier_invocations: 2`. Present the approval brief and obtain approval, set status `active`, then run and check: `python3 .harness/bin/spec_lifecycle.py start --spec PATH --run-id ID`. Emit telemetry start only after lifecycle start succeeds.
 3. **Implement + test (parallel).** Emit `implement_test`; dispatch both roles on the same spec version without sharing outputs. Instructions are task-specific and complete:
    - implementer: path/version, implementation direction, quality constraints, risks, allowed non-Test checks, and excluded approaches;
    - test-implementer: path/version, conventions, risk model, 29119-4 techniques and coverage items, independent oracle, automated and review evidence, test level, and excluded approaches.
@@ -158,10 +182,12 @@ Emit `start` before the initial dispatch. Emit `implement_test` before the paral
    1. `python3 .harness/bin/seed.py backup <every edited file>`.
    2. Inject the violating behavior and run Test command with a finite timeout suited to its expected runtime.
    3. `python3 .harness/bin/seed.py restore` before continuing or handing off; stop if restore fails and record the outstanding backup.
+   4. Run declared fuzzing, then the mutation tool, backing up and restoring every file it may edit.
+   5. Triage survivors as above, record fuzz and survivor outcomes in the ledger, and emit `verification`.
 
    Green confirms a gap only when the mutation executed; failure rejects a finding only when the intended assertion detects the violation. For an inconclusive result, retry with a changed probe that distinguishes execution from the observed failure, or mark the finding blocked and hand off if none is available. Triage every finding before redispatch or closure, including the final audit: evidence-backed rejections need no further audit when tests, evidence procedures, and approved expectations are unchanged.
 7. **Correct as one batch (main).** Ordinary implementation, test, evidence, and spec corrections have no count limit. For each retry, record the failure signature, cause hypothesis, changed approach or new evidence, and observed result in the execution ledger. Continue only with a concrete diagnostic or justified correction; never repeat a failed approach without new evidence. When a resolved finding recurs or edits oscillate, compare prior attempts and re-evaluate the cause before editing again. Apply the stop condition when no next step is available or the correction requires an audit beyond the budget.
 
    Emit `amend` and increment the correction count for history. Redispatch complete replacement instructions, continuing existing agents where possible. Implementation defects receive ids and observable behavior, never test code. Test/evidence defects receive rules, variants, and sanitized evidence, never implementation diffs. Correct the cause across all declared obligations sharing the defective pattern or helper; report the full affected set, including checked siblings needing no change. Do not add undeclared combinations during this sweep. Update evidence references and invalidate affected acceptance before redispatch. A spec gap increments spec version after required approval and redispatches both roles. Reconcile, rerun the restored Test command, repeat confirming mutations, then return to Verify for a fresh audit.
-8. **Stop condition.** Complete only when every required functional and quality obligation passes at its approved coverage target, review artifacts exist, the verifier audit is complete with no open blocking finding, every obligation has current accepted evidence, and the selected confirming mutations fail for the intended assertion. Advisory suggestions may remain; unresolved spec challenges may not. If further verification is required after two invocations, stop with status `limit` before making corrections that require that audit. For ordinary corrections blocked on a user decision or external change, finish independent work and request what is missing, keeping the spec active for a nonterminal handoff. Use the same handoff when no new discriminating check or justified correction is available.
-9. **Close or hand off (main).** For success, set status `complete`, archive with `python3 .harness/bin/spec_lifecycle.py archive --spec PATH --status complete`, then emit end complete. For verifier-budget exhaustion, write a handoff, set `handoff` and status `limit`, archive with `--status limit`, then emit end limit. For a nonterminal stop, write the handoff, store its path in the still-active spec, and emit end handoff without archiving. Report spec version/path, evidence map, finding dispositions, correction causes and count, verifier count, mutations, blocked ids, and handoff if any.
+8. **Stop condition.** Complete only when every required functional and quality obligation passes at its approved coverage target, review artifacts exist, the verifier audit is complete with no open blocking finding, every obligation has current accepted evidence, the selected confirming mutations fail for the intended assertion, declared fuzzing completed with no open violation, and every triaged mutation-tool survivor has a disposition. Advisory suggestions may remain; unresolved spec challenges may not. If further verification is required after two invocations, stop with status `limit` before making corrections that require that audit. For ordinary corrections blocked on a user decision or external change, finish independent work and request what is missing, keeping the spec active for a nonterminal handoff. Use the same handoff when no new discriminating check or justified correction is available.
+9. **Close or hand off (main).** For success, set status `complete`, archive with `python3 .harness/bin/spec_lifecycle.py archive --spec PATH --status complete`, then emit end complete. For verifier-budget exhaustion, write a handoff, set `handoff` and status `limit`, archive with `--status limit`, then emit end limit. For a nonterminal stop, write the handoff, store its path in the still-active spec, and emit end handoff without archiving. Report spec version/path, evidence map, finding dispositions, correction causes and count, verifier count, mutations, fuzz and mutation-tool outcomes, blocked ids, and handoff if any.

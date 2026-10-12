@@ -14,7 +14,7 @@ Account for every declared obligation in one pass. For previously accepted evide
 
 Evidence must observe the required behavior at the declared surface and layer with an independent oracle. Every declared specification-based coverage item needs evidence, and achieved coverage must meet the approved target. Structure-based obligations cite main's measured value, tool and target. Experience-based rows list their guessed defects. Check failure signals and post-failure state. Identify concrete violating behaviors such as constant results, ignored inputs and omitted transitions. Reimplementing the tested algorithm or asserting a mock's own return is not an independent oracle. An id or test name alone is not evidence. Group all affected declared siblings under one finding.
 
-For quality requirements check context, inputs, unit, threshold direction and provenance. Review procedures must be repeatable and name their artifacts. Mutation evidence supplements the primary evidence; propose the strongest distinct defect classes even when no gap is found. Main executes mutations. Do not claim an unrun mutation was detected.
+For quality requirements check context, inputs, unit, threshold direction and provenance. Review procedures must be repeatable and name their artifacts. Mutation evidence supplements the primary evidence; propose the strongest distinct defect classes and fuzz oracles even when no gap is found. Main runs mutations, fuzzing, and the mutation tool. Do not claim an unrun mutation was detected.
 
 ## Findings and output
 
