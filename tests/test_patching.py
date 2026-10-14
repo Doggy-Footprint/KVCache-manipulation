@@ -413,3 +413,43 @@ def test_all_k_and_all_v_rows_apply_their_own_kind(inproc, model_tok, p01_encs):
         got[cfg] = by[("P1", "F1", cfg)]["recovery"]
         assert got[cfg] == pytest.approx(exp, abs=1e-9), cfg
     assert got["all_k"] != got["all_v"]
+
+
+@pytest.fixture(scope="module")
+def inproc_prefix(model_tok, tmp_path_factory):
+    out = tmp_path_factory.mktemp("inproc_prefix")
+    calls = []
+    orig = P.mix_cache
+
+    def spy(recipient, donor, span, *a, **kw):
+        calls.append(tuple(span))
+        return orig(recipient, donor, span, *a, **kw)
+
+    mp = pytest.MonkeyPatch()
+    mp.setattr(P, "mix_cache", spy)
+    try:
+        P.run(model_tok[0], model_tok[1], out, limit=1, region="prefix")
+    finally:
+        mp.undo()
+    return _rows(out / "results.jsonl"), calls
+
+
+@pytest.mark.slow
+def test_prefix_region_spans_and_rows(inproc_prefix, p01_encs):
+    rows, calls = inproc_prefix
+    b0, b1 = p01_encs["F1"].spans["body"]
+    n = PER_DONOR * len(DONORS)
+    assert len(calls) == len(rows) == n + 1 + len(DONORS)
+    assert all(c == (0, b0) for c in calls[: n + 1])
+    assert all(c == (0, b1) for c in calls[n + 1:])
+    by = _by(rows)
+    assert ("F1", "P1", "reverse_all_kv") in by
+    assert not any(r["config"] == "shuffled_all_kv" for r in rows)
+    for d in DONORS:
+        assert by[(d, "F1", "full_all_kv")]["recovery"] == pytest.approx(1, abs=1e-3), d
+        assert by[(d, "F1", "all_kv")]["recovery"] != by[(d, "F1", "full_all_kv")]["recovery"], d
+
+
+def test_run_rejects_unknown_region(model_tok, tmp_path):
+    with pytest.raises(ValueError, match="region"):
+        P.run(model_tok[0], model_tok[1], tmp_path, limit=1, region="suffix")

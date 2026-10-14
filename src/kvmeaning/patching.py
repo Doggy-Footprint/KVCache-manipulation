@@ -16,6 +16,8 @@ READOUT_SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
 DONORS = ("H+", "H-", "P1", "P2", "F2")
 CONT_LEN = 16
 _KINDS = ("k", "v")
+# "prefix" patches [0, body start): the template head is identical across conditions, the delimiter is prefix-dependent.
+REGIONS = ("body", "prefix")
 
 
 def _kv(cache, i: int):
@@ -120,11 +122,13 @@ def _configs(n_layers: int, n_heads: int):
             yield f"head_{l}_{h}", [l], [h], ("k", "v")
 
 
-def run(model, tok, out_dir: Path, limit: int | None):
+def run(model, tok, out_dir: Path, limit: int | None, region: str = "body"):
     cfg = json.loads((DATA / "exp1_prefixes.json").read_text())
     every = [json.loads(l) for l in (DATA / "exp1_passages.jsonl").read_text().splitlines() if l.strip()]
     passages = every[:limit]
     suffix = tok(READOUT_SUFFIX, add_special_tokens=False)["input_ids"]
+    if region not in REGIONS:
+        raise ValueError(f"region must be one of {REGIONS}")
     prompts, spans = {}, {}
     for p in every:
         prefixes = {c: s.format(**p) for c, s in cfg["prefixes"].items()}
@@ -139,7 +143,8 @@ def run(model, tok, out_dir: Path, limit: int | None):
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / "results.jsonl", "w") as f:
         for pi, p in enumerate(passages):
-            pid, span = p["id"], spans[p["id"]]
+            pid, body = p["id"], spans[p["id"]]
+            span = body if region == "body" else (0, body[0])
             caches = {c: prefill(model, ids) for c, ids in prompts[pid].items()}
             logits = {c: readout(model, k, suffix) for c, k in caches.items()}
             conts = {c: greedy_continuation(model, k, suffix) for c, k in caches.items()}
@@ -161,7 +166,10 @@ def run(model, tok, out_dir: Path, limit: int | None):
 
             emit("F1", "P1", "reverse_all_kv", "F1", mix_cache(caches["P1"], caches["F1"], span, range(n_layers)))
 
-            if len(every) > 1:
+            if region == "prefix":
+                for donor in DONORS:
+                    emit(donor, "F1", "full_all_kv", donor, mix_cache(caches["F1"], caches[donor], (0, body[1]), range(n_layers)))
+            elif len(every) > 1:
                 other = every[(pi + 1) % len(every)]["id"]
                 cut = min(span[1], spans[other][1])
                 donor_ids = prompts[other]["P1"][:cut] + prompts[pid]["P1"][cut:]
@@ -178,12 +186,13 @@ def main():
     ap.add_argument("--model", default="0.6B", choices=list(M.MODELS))
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--out", type=Path, default=Path("runs"))
+    ap.add_argument("--region", default="body", choices=REGIONS)
     a = ap.parse_args()
 
     t0 = time.time()
     model, tok = M.load(a.model)
     run_dir = a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}"
-    run(model, tok, run_dir / "exp1_patch", a.limit)
+    run(model, tok, run_dir / ("exp1_patch" if a.region == "body" else f"exp1_patch_{a.region}"), a.limit, a.region)
     print(f"elapsed {(time.time() - t0) / 60:.1f} min")
     print(run_dir)
 
