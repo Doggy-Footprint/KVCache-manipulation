@@ -19,11 +19,19 @@ def _jsonl(p: Path) -> list[dict]:
     return [json.loads(line) for line in p.read_text().splitlines() if line.strip()]
 
 
+def exp2_a_span(d: dict, enc) -> tuple[int, int]:
+    if "a_end_turn" not in d:
+        raise KeyError(f"dialogue {d['id']}: missing a_end_turn")
+    return (1, enc.spans[f"turn_{d['a_end_turn']}"][0])
+
+
 def _tensors(cap, spans, layers):
     t = {r: getattr(cap, r)[layers] for r in REPRS if r != "resid"}
     # hidden_states[0] is the embedding output, so layer i's output is index i + 1.
     t["resid"] = cap.resid[[0] + [i + 1 for i in layers]]
     t["logits_last"] = cap.logits_last
+    for name, x in cap.logits.items():
+        t[f"logits.{name}"] = x
     for name, (a, b) in spans.items():
         if a == b:
             continue
@@ -40,7 +48,7 @@ def run_exp1(model, tok, size, out, limit, layers):
         encs = {c: exp1_encode(tok, ids, p["text"]) for c, ids in pids.items()}
         assert_aligned(encs)
         for c, e in encs.items():
-            cap = capture(model, torch.tensor([e.ids]))
+            cap = capture(model, torch.tensor([e.ids]), {"body_last": e.spans["body"][1] - 1})
             meta = dict(exp=1, model=M.MODELS[size], passage=p["id"], condition=c, ids=e.ids, spans=e.spans, layers=layers)
             save(out / "exp1" / p["id"] / c, _tensors(cap, {"prefix": e.spans["prefix"]}, layers), meta)
             print(f"exp1 {p['id']} {c} T={len(e.ids)}")
@@ -50,8 +58,7 @@ def run_exp2(model, tok, size, out, limit, layers):
     for d in _jsonl(DATA / "exp2_dialogues.jsonl")[:limit]:
         e = exp2_encode(tok, d["turns"])
         gt = {k: (e.spans[f"turn_{d[k]}"][0] if d[k] is not None else None) for k in ("declaration_turn", "b_content_turn")}
-        cut = gt["declaration_turn"] or gt["b_content_turn"]
-        mass_spans = {"pre_shift": (1, cut)} if cut else {}
+        mass_spans = {"a_span": exp2_a_span(d, e)}
         cap = capture(model, torch.tensor([e.ids]))
         meta = dict(exp=2, model=M.MODELS[size], dialogue=d["id"], condition=d["condition"], ids=e.ids,
                     spans=e.spans, ground_truth_tokens=gt, layers=layers)

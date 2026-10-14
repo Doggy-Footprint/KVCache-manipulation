@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 from transformers.models.qwen3.modeling_qwen3 import apply_rotary_pos_emb
@@ -12,10 +12,16 @@ class Capture:
     q_post: torch.Tensor
     resid: torch.Tensor
     logits_last: torch.Tensor
+    logits: dict[str, torch.Tensor] = field(default_factory=dict)
 
 
 @torch.no_grad()
-def capture(model, input_ids: torch.Tensor) -> Capture:
+def capture(model, input_ids: torch.Tensor, logit_positions: dict[str, int] | None = None) -> Capture:
+    T = input_ids.shape[-1]
+    logit_positions = logit_positions or {}
+    for name, pos in logit_positions.items():
+        if not -T <= pos < T:
+            raise IndexError(f"logit position {name}={pos} outside [{-T}, {T})")
     layers = model.model.layers
     store: dict[str, list] = {"v": [], "k_pre": [], "q_pre": [], "cos_sin": []}
     handles = []
@@ -53,4 +59,5 @@ def capture(model, input_ids: torch.Tensor) -> Capture:
         q_post=f(q_post),
         resid=f(out.hidden_states),
         logits_last=out.logits[0, -1].float().cpu(),
+        logits={n: out.logits[0, p].float().cpu() for n, p in logit_positions.items()},
     )
