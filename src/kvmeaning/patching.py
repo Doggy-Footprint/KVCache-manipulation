@@ -106,7 +106,7 @@ def recovery(donor: torch.Tensor, recipient: torch.Tensor, patched: torch.Tensor
     return 1 - kl(p) / den
 
 
-def _configs(n_layers: int, n_heads: int):
+def _configs(n_layers: int, n_heads: int, heads: bool = True):
     allL = range(n_layers)
     yield "all_kv", allL, None, ("k", "v")
     yield "all_k", allL, None, ("k",)
@@ -117,12 +117,12 @@ def _configs(n_layers: int, n_heads: int):
         yield f"cum_fwd_{l}", range(l + 1), None, ("k", "v")
     for l in allL:
         yield f"cum_bwd_{l}", range(l, n_layers), None, ("k", "v")
-    for l in allL:
+    for l in allL if heads else ():
         for h in range(n_heads):
             yield f"head_{l}_{h}", [l], [h], ("k", "v")
 
 
-def run(model, tok, out_dir: Path, limit: int | None, region: str = "body"):
+def run(model, tok, out_dir: Path, limit: int | None, region: str = "body", heads: bool = True):
     cfg = json.loads((DATA / "exp1_prefixes.json").read_text())
     every = [json.loads(l) for l in (DATA / "exp1_passages.jsonl").read_text().splitlines() if l.strip()]
     passages = every[:limit]
@@ -160,7 +160,7 @@ def run(model, tok, out_dir: Path, limit: int | None, region: str = "body"):
                 f.flush()
 
             for donor in DONORS:
-                for name, ls, hs, ks in _configs(n_layers, n_heads):
+                for name, ls, hs, ks in _configs(n_layers, n_heads, heads):
                     emit(donor, "F1", name, donor, mix_cache(caches["F1"], caches[donor], span, ls, hs, ks))
                 print(f"patch {pid} donor={donor} t={time.time() - t0:.0f}s", flush=True)
 
@@ -187,12 +187,13 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--out", type=Path, default=Path("runs"))
     ap.add_argument("--region", default="body", choices=REGIONS)
+    ap.add_argument("--no-heads", action="store_true")
     a = ap.parse_args()
 
     t0 = time.time()
     model, tok = M.load(a.model)
     run_dir = a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}"
-    run(model, tok, run_dir / ("exp1_patch" if a.region == "body" else f"exp1_patch_{a.region}"), a.limit, a.region)
+    run(model, tok, run_dir / ("exp1_patch" if a.region == "body" else f"exp1_patch_{a.region}"), a.limit, a.region, not a.no_heads)
     print(f"elapsed {(time.time() - t0) / 60:.1f} min")
     print(run_dir)
 

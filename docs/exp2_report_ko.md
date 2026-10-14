@@ -38,4 +38,4 @@
 - 노트북: `notebooks/exp2_topic_shift.ipynb`
 - 그림: `figures/exp2/` (timeline_*: M1/M2/M4 겹친 타임라인, m1_turn_distance, m1_layer_repr, m2_attn_mass_turns, m2_head_heatmap, m3_trajectory_pca/umap, m4_probe_cv)
 - 데이터: `data/exp2_dialogues.jsonl` (S2/S3/S5/S6 추가, `intermediate_turn`·`return_turn` 필드 추가), `data/exp2_probe_texts.jsonl`
-- 원자료: `runs/20261010-113829-0.6B`
+- 원자료: `runs/20261014-093549-0.6B` (재추출본. 최초 run `20261010-113829`와 텐서가 비트 단위로 같고, 잘못된 `attn_mass.pre_shift` 대신 `attn_mass.a_span`을 저장. 최초 run은 삭제)

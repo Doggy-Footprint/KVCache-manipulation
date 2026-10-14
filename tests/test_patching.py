@@ -453,3 +453,10 @@ def test_prefix_region_spans_and_rows(inproc_prefix, p01_encs):
 def test_run_rejects_unknown_region(model_tok, tmp_path):
     with pytest.raises(ValueError, match="region"):
         P.run(model_tok[0], model_tok[1], tmp_path, limit=1, region="suffix")
+
+
+def test_configs_without_heads_drop_only_head_rows():
+    full = [c[0] for c in P._configs(L, HKV)]
+    no_heads = [c[0] for c in P._configs(L, HKV, heads=False)]
+    assert no_heads == [c for c in full if not c.startswith("head_")]
+    assert len(no_heads) == 3 + 3 * L
