@@ -5,7 +5,7 @@ RQ1: how a length-matched prefix (hint, misleading hint, persona) changes V, pre
 RQ2: whether a conversational topic shift is detectable from new-token K/V and attention mass on pre-shift tokens, separating the declaration of a shift from an actual content shift.
 All distances are reported relative to a filler-vs-filler noise floor. Source proposal: `kv_experiment_plan.md` (Korean); English version `docs/experiment_plan.md`; citations `refs/references.md`.
 
-<!-- harness:begin 0.22.0 -->
+<!-- harness:begin 0.25.0 -->
 # Documentation Guide
 
 "Documentation" refers to standalone docs, inline comments, and docstrings.

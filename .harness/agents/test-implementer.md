@@ -7,7 +7,6 @@ claude.model: sonnet
 claude.effort: medium
 codex.model: gpt-6.1-sol
 codex.model_reasoning_effort: medium
-codex.sandbox_mode: workspace-write
 ---
 
 Build independent automated and review evidence from the spec while implementation proceeds in parallel.

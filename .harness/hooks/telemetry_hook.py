@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 import config  # noqa: E402
 import hook_shared  # noqa: E402
+import session_metrics  # noqa: E402
 import telemetry  # noqa: E402
 
 PATHS = config.load_paths()
@@ -147,7 +148,12 @@ def main() -> int:
         return 0
     hook_event = payload.get("hook_event_name")
     if hook_event == "PostToolUse":
-        handle_post_tool_use(payload)
+        try:
+            handle_post_tool_use(payload)
+        finally:
+            session_metrics.record(payload)
+    elif hook_event == "SessionEnd":
+        session_metrics.flush(payload, True)
     elif hook_event == "PostToolUseFailure":
         handle_post_tool_use_failure(payload)
     return 0

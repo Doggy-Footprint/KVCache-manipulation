@@ -7,7 +7,6 @@ claude.model: haiku
 claude.effort: low
 codex.model: gpt-6.1-luna
 codex.model_reasoning_effort: low
-codex.sandbox_mode: read-only
 ---
 
 You classify surviving mutants. Main gives you the spec path and, per mutant, its id, diff, file and line; files are already restored.

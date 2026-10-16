@@ -7,6 +7,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 harness_dir="$repo_root/.harness"
 
 if command -v python3 >/dev/null 2>&1; then
+  python3 "$harness_dir/git/warn_new_comments.py" --staged || true
   python3 "$harness_dir/git/verify_rules.py"
 else
   echo "pre-commit: python3 not found, skipping harness rule verification" >&2

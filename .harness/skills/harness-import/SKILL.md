@@ -35,7 +35,7 @@ Turn only the generalizable edits into concrete edits to `harness/`. Show them t
 For each approved item:
 
 1. Edit `harness/`, never `.harness/` or the generated files.
-2. `python3 installer/harness.py upgrade .`
+2. `python3 installer/harness.py update .`
 3. `python3 -m unittest tests/test_installer.py`
 
 # Report

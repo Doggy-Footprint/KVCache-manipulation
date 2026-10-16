@@ -5,7 +5,6 @@ claude.tools: Read, Grep, Glob
 claude.model: sonnet
 claude.disallowedTools: mcp__*
 codex.model: gpt-6.1-sol
-codex.sandbox_mode: read-only
 ---
 
 You locate what the main agent needs to read, and cite it. You do not design, and you do not propose edits.

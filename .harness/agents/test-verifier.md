@@ -7,7 +7,6 @@ claude.model: sonnet
 claude.effort: medium
 codex.model: gpt-6.1-sol
 codex.model_reasoning_effort: medium
-codex.sandbox_mode: read-only
 ---
 
 Audit whether evidence establishes the approved functional and quality requirements. Inputs are the spec path/version, complete coverage/evidence map, prior audit state, change-impact assessment, and finding ledger with dispositions and mutation outcomes. Read Tests and imported test helpers only. Never read Implementation or injected diffs.

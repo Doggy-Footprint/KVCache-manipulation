@@ -78,8 +78,7 @@ def active_workflow() -> dict | None:
     return _valid_workflow(value)
 
 
-def _write_state(value: dict) -> bool:
-    path = _workflow_state_file()
+def write_json_atomic(path: Path, value: dict) -> bool:
     temporary_name = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,6 +99,10 @@ def _write_state(value: dict) -> bool:
                 Path(temporary_name).unlink(missing_ok=True)
             except OSError:
                 pass
+
+
+def _write_state(value: dict) -> bool:
+    return write_json_atomic(_workflow_state_file(), value)
 
 
 def _state_snapshot() -> tuple[bool, bytes | None]:

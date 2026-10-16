@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 import config  # noqa: E402
+import session_metrics  # noqa: E402
 
 RUNNING_DIR = config.REPO_ROOT / ".harness" / "sessions" / ".running"
 
@@ -52,6 +53,10 @@ def on_session_start(payload: dict) -> int:
     mine = own_marker()
     others = [m for m in sweep_stale() if m != mine]
     mine.write_text(payload.get("source", ""), encoding="utf-8")
+    try:
+        session_metrics.flush_orphans(payload.get("session_id"))
+    except Exception:
+        pass
     if others:
         print(
             "harness: "

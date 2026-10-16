@@ -1,17 +1,28 @@
-name: Comment warning
+name: Comment approval gate
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
-  warn-on-new-comments:
+  require-comment-approval:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Warn about added comments and docstrings
-        run: python3 .harness/git/warn_new_comments.py "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}"
+      - name: Revoke comment approval on new push
+        if: github.event.action == 'synchronize'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X DELETE repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/comments-approved \
+            || echo "::warning::Could not remove the comments-approved label"
+      - name: Require approval for added comments and docstrings
+        run: python3 .harness/git/warn_new_comments.py "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" --approved ${{ (github.event.action != 'synchronize' && contains(github.event.pull_request.labels.*.name, 'comments-approved')) && 'yes' || 'no' }}

@@ -16,6 +16,14 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/session_lock.py\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/telemetry_hook.py\""
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -61,7 +69,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|Write|Edit",
+        "matcher": "Bash|Write|Edit|NotebookEdit|Read|Grep|Glob|LS",
         "hooks": [
           {
             "type": "command",

@@ -34,7 +34,7 @@
     },
     {
       "event": "PostToolUse",
-      "matcher": "Bash|Write|Edit",
+      "matcher": "Bash|Write|Edit|NotebookEdit|Read|Grep|Glob|LS",
       "targets": ["claude"],
       "command": "python3 \"{root}/.harness/hooks/telemetry_hook.py\""
     },
@@ -42,6 +42,11 @@
       "event": "PostToolUse",
       "matcher": "Bash|apply_patch",
       "targets": ["codex"],
+      "command": "python3 \"{root}/.harness/hooks/telemetry_hook.py\""
+    },
+    {
+      "event": "SessionEnd",
+      "targets": ["claude"],
       "command": "python3 \"{root}/.harness/hooks/telemetry_hook.py\""
     },
     {

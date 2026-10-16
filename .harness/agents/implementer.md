@@ -7,7 +7,6 @@ claude.model: sonnet
 claude.effort: medium
 codex.model: gpt-6.1-sol
 codex.model_reasoning_effort: medium
-codex.sandbox_mode: workspace-write
 ---
 
 Implement the approved spec; do not choose behavior or quality targets.

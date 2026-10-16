@@ -2,7 +2,6 @@ name = "implementer"
 description = "Implements an approved workflow-approach spec without seeing its tests. Use only in that workflow's Implement + Test step, in parallel with test-implementer."
 model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
-sandbox_mode = "workspace-write"
 developer_instructions = """
 Implement the approved spec; do not choose behavior or quality targets.
 

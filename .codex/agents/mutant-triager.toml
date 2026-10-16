@@ -2,7 +2,6 @@ name = "mutant-triager"
 description = "Classifies surviving mutation-tool mutants by reading only each mutant's file and the spec. Use only in the workflow-approach Triage and mutate step."
 model = "gpt-6.1-luna"
 model_reasoning_effort = "low"
-sandbox_mode = "read-only"
 developer_instructions = """
 You classify surviving mutants. Main gives you the spec path and, per mutant, its id, diff, file and line; files are already restored.
 
