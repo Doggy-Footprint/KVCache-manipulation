@@ -51,7 +51,6 @@ REQUIRED_HEADINGS = {
         "## Chosen Instead",
     ],
     PATHS.handoff: [
-        "## Goal",
         "## State",
         "## Failed Attempts",
         "## Next Step",
@@ -288,6 +287,8 @@ def check_required_headings(errors: list):
                 h for h in headings
                 if not re.search(rf"(?m)^{re.escape(h)}\s*$", text)
             ]
+            if directory == PATHS.handoff and not re.search(r"(?m)^## (User Query|Goal)\s*$", text):
+                missing.insert(0, "## User Query")
             if directory == PATHS.handoff and not re.search(r"(?m)^## Contract Snapshot\s*$", text):
                 missing.extend(
                     heading for heading in ("## Spec", "## Execution Ledger")

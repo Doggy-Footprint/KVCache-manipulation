@@ -5,6 +5,7 @@ import sys
 from collections import defaultdict
 
 COMMENT_PATTERN = re.compile(r"(?:^|\s)(?://|/\*|#|'''|\"\"\")")
+APPROVAL_LABEL = "comments-approved"
 CODE_EXTENSIONS = {
     ".c", ".cc", ".cpp", ".cs", ".go", ".h", ".hpp", ".java", ".js",
     ".jsx", ".kt", ".php", ".py", ".rb", ".rs", ".sh", ".swift", ".ts",
@@ -102,7 +103,17 @@ def main() -> int:
     for path, entries in grouped.items():
         lines = ", ".join(str(line) for line, _ in entries)
         print(f"- `{path}`: line(s) {lines}")
-    return 1 if approved is False else 0
+    if approved is not False:
+        return 0
+    message = (
+        f"New comments or docstrings require approval: review them, then add the "
+        f"`{APPROVAL_LABEL}` label to this pull request. A new push removes the label; "
+        f"add it again after reviewing the new commits."
+    )
+    print()
+    print(message)
+    print(f"::error title=Missing {APPROVAL_LABEL} label::{message}")
+    return 1
 
 
 if __name__ == "__main__":

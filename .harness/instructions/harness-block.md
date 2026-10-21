@@ -112,7 +112,7 @@ Write when a workflow-approach task exhausts its verifier budget, cannot make pr
 Required file structure:
 
 - `#` Title
-- `## Goal` (user's original words)
+- `## User Query` (user's original words)
 - `## State` (branch, commit, changed files)
 - `## Failed Attempts` (table `| attempt | failure evidence | cause |`, cause marked `verified` or `hypothesis`)
 - `## Next Step`
@@ -127,6 +127,7 @@ failed attempts without requiring telemetry to reconstruct them.
 Handoffs created before harness 0.7.0 may retain `## Contract Snapshot` instead
 of `## Spec` and `## Execution Ledger`; do not rewrite historical records solely
 to change their format.
+Handoffs created before harness 0.27.0 may retain `## Goal` instead of `## User Query`.
 
 When resuming, never delete or edit existing Failed Attempts rows; only append.
 
