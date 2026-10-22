@@ -1,8 +1,3 @@
-"""VS1-VS6: K=3 shuffled-passage control (spec 2c3c94212218212f v1).
-
-Oracles: the spec selection formula for shuffle_sources; an unbatched recomputation
-(P.prefill / P.mix_cache / P.readout / P.recovery) of the donor/span rule for rows.
-"""
 import json
 import os
 import random
@@ -28,8 +23,6 @@ def oracle_sources(pid, pool, k=3, seed=0):
     return random.Random(f"{seed}:{pid}").sample(others, min(k, len(pool) - 1))
 
 
-# ---------------- VS1 ----------------
-
 def test_pool_has_30_passages():
     assert len(POOL) == 30
 
@@ -49,7 +42,7 @@ def test_shuffle_sources_defaults_are_k3_seed0():
 
 def test_shuffle_sources_depend_on_pid_and_seed_and_k():
     sel = {pid: tuple(P.shuffle_sources(pid, POOL)) for pid in POOL}
-    assert len(set(sel.values())) > 15  # not a constant/ignored-pid result
+    assert len(set(sel.values())) > 15
     for seed in (1, 7):
         got = {pid: P.shuffle_sources(pid, POOL, seed=seed) for pid in POOL[:10]}
         assert all(got[pid] == oracle_sources(pid, POOL, seed=seed) for pid in got)
@@ -79,8 +72,6 @@ def test_shuffle_sources_pool_size_boundaries(n, length):
     assert set(got) == set(pool[1:])
     assert pool[0] not in got
 
-
-# ---------------- run fixtures ----------------
 
 def _read(out):
     (f,) = list(out.rglob("results.jsonl"))
@@ -133,8 +124,6 @@ def _mode_args(arch, mode, model):
     return {"kv": (kvl, False), "state": ([], True), "both": (kvl, True)}[mode]
 
 
-# ---------------- VS2 ----------------
-
 def test_shuffled_row_counts_and_sources_in_order(body_run):
     arch, _, rows = body_run
     expect = P.shuffle_sources("p01", POOL)
@@ -169,10 +158,8 @@ def test_shuffled_recovery_equals_unbatched_per_source(body_run, tok, mode):
         ref = P.recovery(P.readout(model, dc_target, suffix), P.readout(model, rc, suffix), P.readout(model, mixed, suffix))
         refs.append(ref)
         assert abs(r["recovery"] - ref) <= 1e-3, (r["shuffle_source"], r["recovery"], ref)
-    assert len({round(x, 5) for x in refs}) > 1  # sources are not interchangeable (non-vacuity)
+    assert len({round(x, 5) for x in refs}) > 1
 
-
-# ---------------- VS3 ----------------
 
 def test_only_shuffled_rows_carry_shuffle_source(body_run):
     _, _, rows = body_run
@@ -183,7 +170,7 @@ def test_only_shuffled_rows_carry_shuffle_source(body_run):
             assert "shuffle_source" not in r, r
             assert r["donor"] != "P1_shuffled"
     keys = Counter((r["donor"], r["recipient"], r["config"]) for r in rows if "shuffle_source" not in r)
-    assert max(keys.values()) == 1  # one row per non-shuffled identity (no duplicates from the K loop)
+    assert max(keys.values()) == 1
 
 
 def test_prefix_region_has_no_shuffled_rows(prefix_run):
@@ -192,8 +179,6 @@ def test_prefix_region_has_no_shuffled_rows(prefix_run):
         assert "shuffle_source" not in r
         assert r["donor"] != "P1_shuffled" and not r["config"].startswith("shuffled_all_kv")
 
-
-# ---------------- VS4 ----------------
 
 @pytest.mark.parametrize("arch", ["dense", "hybrid"])
 def test_shuffled_donor_prefilled_at_most_once_each(arch, tok, tmp_path):
@@ -221,8 +206,6 @@ def test_shuffled_donor_prefilled_at_most_once_each(arch, tok, tmp_path):
     assert sum(calls.count(d) for d in set(donors)) <= 3
 
 
-# ---------------- VS5 ----------------
-
 def test_single_passage_file_yields_no_shuffled_rows(tok, tmp_path, monkeypatch):
     data = tmp_path / "data"
     shutil.copytree(H.DATA, data)
@@ -237,8 +220,6 @@ def test_single_passage_file_yields_no_shuffled_rows(tok, tmp_path, monkeypatch)
     assert any(r["config"].startswith("all_kv") for r in rows)
 
 
-# ---------------- VS6 ----------------
-
 def test_shuffle_k_constant_is_respected_by_run(tok, tmp_path, monkeypatch):
     monkeypatch.setattr(P, "SHUFFLE_K", 2)
     P.run(_model("dense"), tok, tmp_path, limit=1, region="body")
@@ -246,8 +227,6 @@ def test_shuffle_k_constant_is_respected_by_run(tok, tmp_path, monkeypatch):
     assert len(sh) == 2
     assert [r["shuffle_source"] for r in sh] == oracle_sources("p01", POOL, k=2)
 
-
-# ---------------- G1: cut taken from the pid side ----------------
 
 def _lines():
     return [l for l in (H.DATA / "exp1_passages.jsonl").read_text().splitlines() if l.strip()]

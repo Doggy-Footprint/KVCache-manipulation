@@ -1,8 +1,3 @@
-"""VO8 (QR4) and QR6: resume skips completed passages; no secret values written to run outputs.
-Scenarios: fresh run, rerun after partial (fewer passages done, one passage missing a condition file).
-Assumption (spec silent): extract.run_exp1(model, tok, size, out, limit, layers) as in tests/test_extract.py,
-`out` is the run directory (outputs under out/exp1/<passage>/).
-"""
 import pytest
 
 import tiny_helpers as H
@@ -49,7 +44,7 @@ def test_rerun_after_partial_only_computes_missing_passage(tok, tmp_path, tmp_pa
     fresh = tmp_path_factory.mktemp("fresh")
     n_fresh = _run(model, tok, fresh, 2)
     assert 0 < n_inc < n_fresh
-    assert n_inc <= n_first  # one passage worth of work (same structure per passage)
+    assert n_inc <= n_first
     assert _passage_files(tmp_path, "p01") == p1
     assert _passage_files(tmp_path, "p02")
 
@@ -125,7 +120,6 @@ def test_exp2_on_tiny_hybrid_saves_kv_layers_a_span_mass_and_resumes(tok, tmp_pa
     assert st.read_bytes() == before
 
 
-# ---------- F3: patching resume (done.txt) ----------
 import json as _json
 from collections import Counter
 from kvmeaning import patching as P
@@ -175,7 +169,7 @@ def test_patch_limit_1_then_2_computes_only_second_passage_without_duplicates(to
     assert {r["passage"] for r in rows} == {"p01", "p02"}
     assert max(_ident(rows).values()) == 1
     first_rows = [_json.loads(l) for l in first.decode().splitlines() if l.strip()]
-    assert [r for r in rows if r["passage"] == "p01"] == first_rows  # completed passage untouched
+    assert [r for r in rows if r["passage"] == "p01"] == first_rows
 
 
 def test_patch_passage_missing_from_done_txt_is_recomputed_once(tok, tmp_path, tmp_path_factory):

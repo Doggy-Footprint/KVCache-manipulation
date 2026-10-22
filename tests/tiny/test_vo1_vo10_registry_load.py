@@ -1,11 +1,3 @@
-"""VO1 (FR1, FR2, FR3, C9, C10, QR8) and VO10 (FR13): registry and load outcomes.
-
-Classes: dense-enabled, hybrid-enabled, disabled, config-mismatch. No real weights: the conftest guard
-turns every weights/config from_pretrained of a non-local path into a failure, and `guard.fake` lets
-load() receive a tiny random-weight model instead. Tokenizer loading is replaced by the local tokenizer.
-Assumption (spec silent): ModelSpec.expected keys are HF text-config attribute names or the obvious
-aliases below; layer_types is a list of "full_attention"/"linear_attention".
-"""
 import json
 import os
 
@@ -85,7 +77,7 @@ def test_c13_expected_matches_pinned_revision_config_fixture(key):
     assert {"num_hidden_layers", "num_attention_heads", "num_key_value_heads", "head_dim", "layer_types"} <= set(exp)
     for k, v in exp.items():
         got = getattr(text, k, None)
-        if k == "layer_types" and got is None:  # e.g. Qwen3MoeConfig has no layer_types: all full attention
+        if k == "layer_types" and got is None:
             got = ["full_attention"] * text.num_hidden_layers
         assert got is not None, k
         assert _norm(got) == _norm(v), (key, k)
@@ -193,8 +185,6 @@ def test_unknown_key_is_rejected(fake_env):
         M.load("does-not-exist")
     assert guard.calls == []
 
-
-# ---- VO10 ----
 
 def test_offline_env_is_set():
     assert os.environ["HF_HUB_OFFLINE"] == "1" and os.environ["TRANSFORMERS_OFFLINE"] == "1"

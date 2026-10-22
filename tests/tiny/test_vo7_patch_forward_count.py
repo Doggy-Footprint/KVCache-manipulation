@@ -1,10 +1,3 @@
-"""VO7 (QR2, error guessing: per-config forward instead of batched) and FR7/FR8 on the tiny hybrid.
-
-QR2 bound per passage: ceil(rows/B) + ceil(pairs/B) + |conditions| + CONT_LEN + 3, counted on the decoder
-stack, B in {16 (default), 4 (forced so rows > B by construction)}. pairs = distinct (donor, recipient).
-FR8 oracle: unbatched recovery from patching.prefill/mix_cache/readout/recovery on the same tiny model.
-Row schema per spec: config = base name (+ "@kv"/"@state"/"@both" on hybrid), full_all_kv@both sanity row.
-"""
 import json
 import math
 from collections import Counter
@@ -62,8 +55,7 @@ def test_rows_follow_schema_modes_and_kv_only_layer_sweeps(run):
     for b in ("all_kv",):
         assert {r["config"] for r in rows if r["config"].startswith(b + "@")} == {f"{b}@{m}" for m in MODES}
     layer_ids = {int(r["config"].split("@")[0].split("_")[1]) for r in rows if r["config"].startswith("layer_")}
-    assert layer_ids == set(H.HYBRID_KV)  # sweeps index only kv layers
-    # body-region full_all_kv exists for @both only
+    assert layer_ids == set(H.HYBRID_KV)
     assert {r["config"] for r in rows if r["config"].startswith("full_all_kv")} == {"full_all_kv@both"}
 
 
@@ -99,8 +91,6 @@ def test_batched_row_recovery_equals_unbatched(run, tok, mode):
     assert len(row) == 1
     assert abs(row[0]["recovery"] - ref) <= 1e-3
 
-
-# ---------- F2: emission per schema, extended unbatched oracle ----------
 
 def _rows_of(model, tok, tmp_path_factory, name, **kw):
     out = tmp_path_factory.mktemp(name)

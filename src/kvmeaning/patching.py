@@ -137,7 +137,6 @@ def greedy_continuation(model, cache, suffix_ids: list[int], n: int = CONT_LEN) 
 
 @torch.no_grad()
 def eval_batch(model, caches: list, suffix_ids: list[int], conts: list[list[int]]) -> tuple[torch.Tensor, list[float]]:
-    """One forward over equal-length caches: returns readout logits [B, V] and the summed log-prob of each row's continuation."""
     stacked = stack_caches(caches)
     ids = torch.tensor([suffix_ids + c[:-1] for c in conts], device=model.device)
     logits = model(input_ids=ids, past_key_values=stacked, use_cache=True).logits[:, len(suffix_ids) - 1:].float().cpu()
@@ -148,7 +147,6 @@ def eval_batch(model, caches: list, suffix_ids: list[int], conts: list[list[int]
 
 @torch.no_grad()
 def greedy_batch(model, caches: list, suffix_ids: list[int], n: int = CONT_LEN) -> tuple[torch.Tensor, list[list[int]]]:
-    """Batched greedy decoding of equal-length caches; also returns the first-step (readout) logits [B, V]."""
     c = stack_caches(caches)
     ids = torch.tensor([suffix_ids] * len(caches), device=model.device)
     outs, first = [], None

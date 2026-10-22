@@ -120,7 +120,6 @@ def judge_run(pilot_name: str, run_names: list[str]) -> str:
 
 @app.local_entrypoint()
 def pilot(model: str = "Q3.8-27B", limit: int = 0, run_ts: str = "", batch_size: int = 16):
-    """exp1 extract (v1, v2), patch body+prefix (v1, v2), exp2 extract, summarize, judge. Pass run_ts to resume."""
     ts = run_ts or time.strftime("%Y%m%d-%H%M%S")
     lim = limit or None
     names = {d: f"{ts}-{model}-{d}" for d in ("v1", "v2")}

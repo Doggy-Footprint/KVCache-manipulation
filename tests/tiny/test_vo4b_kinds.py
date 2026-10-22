@@ -1,8 +1,3 @@
-"""VO4b (FR6, C14, C19): mix_cache `kinds` decision table, rows {dense, hybrid} x {("k",), ("v",)} + error row ("q",).
-
-Oracle: explicit slicing of recipient/donor snapshots taken before the call (kv mode, state=False,
-span strictly inside the cache length, all kv layers).
-"""
 import pytest
 import torch
 
@@ -43,7 +38,7 @@ def test_only_named_tensor_taken_from_donor_inside_span(arch, kind):
             assert not torch.equal(exp, r[named]), "non-vacuity: donor differs from recipient in span"
             assert torch.equal(m[named], exp), (arch, kind, li, named)
             assert torch.equal(m[other], r[other]), (arch, kind, li, other)
-        else:  # hybrid linear layer: conv/recurrent state is the recipient's
+        else:
             assert m.keys() == r.keys()
             assert all(torch.equal(m[k], r[k]) for k in r), (arch, li)
     assert H.same_snapshot(rc, rs) and H.same_snapshot(dc, ds)

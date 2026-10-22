@@ -1,8 +1,3 @@
-"""VO7b (FR7, FR8, C15): patch rows all_k / all_v, {dense, hybrid} x {body, prefix}.
-
-Presence and config-name suffix set for every variant; recovery equality with an unbatched recomputation
-(mix_cache with kinds over all kv layers, readout one at a time, patching.recovery) on dense-body and hybrid-body.
-"""
 import json
 
 import pytest
@@ -47,7 +42,7 @@ def test_rows_present_for_every_donor_with_schema_suffixes(variant, name):
         assert {r["config"] for r in mine} == {f"{name}@kv"}
         cfgs = {r["config"] for r in rows}
         assert not cfgs & {f"{name}@state", f"{name}@both"}
-    assert len(mine) == len(pairs)  # exactly one row per (donor, recipient)
+    assert len(mine) == len(pairs)
 
 
 def _unbatched(tok, model, donor, recipient, kinds):

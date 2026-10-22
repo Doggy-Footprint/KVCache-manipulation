@@ -22,7 +22,6 @@ def _verdict(value: float, thr: float, detail=None) -> dict:
 
 
 def _designs(summary: dict) -> dict[str, dict]:
-    """Accept {"v1": ..., "v2": ...} or a single exp1_summary (keyed by its own design)."""
     if "ratio" in summary:
         return {summary.get("design") or "v1": summary}
     return {k: v for k, v in summary.items() if isinstance(v, dict) and "ratio" in v}

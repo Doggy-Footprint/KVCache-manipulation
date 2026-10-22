@@ -1,6 +1,4 @@
-"""VO6b (FR11, C16, C18): pair_ratio on a controlled synthetic run dir (3 passages, 2 layers).
-
-Construction (exact in fp16): N0 = 1 on every head, F1 = 0, F2 = (f, 3f) per head so the floor mean is 2f;
+"""Construction (exact in fp16): N0 = 1 on every head, F1 = 0, F2 = (f, 3f) per head so the floor mean is 2f;
 P1/H+ = 1 + d per head, so ||A - N0|| per head is d (and ||A - F1|| would differ). Resid tensors hold
 [embedding garbage, output of layer 0, output of layer 1]; resid layer 0 uses the layer-1 table and
 resid layer 1 the layer-0 table (swap) so an index off-by-one or an embedding row is detected.
@@ -42,7 +40,7 @@ def _heads(cond, table, p, zero):
     return tuple(1 + x for x in DIST[cond][table][p])
 
 
-def _fill(vals, g):  # (NKV, T, D)
+def _fill(vals, g):
     x = torch.full((NKV, T, D), g)
     for h, v in enumerate(vals):
         x[h, 4:11] = v * torch.tensor([1.0, 0, 0, 0])

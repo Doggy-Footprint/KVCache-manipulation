@@ -26,8 +26,8 @@ CONFIG_LOADERS = [transformers.AutoConfig]
 
 class Guard:
     def __init__(self):
-        self.calls = []  # (kind, target, kwargs) of every attempted remote load
-        self.fake = None  # optional factory returning a tiny model for a "weights" load
+        self.calls = []
+        self.fake = None
 
     def _check(self, kind, target, kwargs):
         local = isinstance(target, (str, Path)) and Path(str(target)).exists()

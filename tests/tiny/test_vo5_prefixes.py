@@ -1,5 +1,4 @@
-"""VO5 (FR9, C6, QR3): prefix designs. Equivalence classes: v1 unchanged, v2 equal length,
-v2 core-sentence suffix, v2 has N0. Tokenizer files only (offline), no weights."""
+"""Tokenizer files only (offline), no weights."""
 import json
 import subprocess
 
@@ -11,7 +10,7 @@ from kvmeaning.spans import exp1_encode, exp1_prefix_ids
 V1 = json.loads((H.DATA / "exp1_prefixes.json").read_text())
 PASSAGES = [json.loads(l) for l in (H.DATA / "exp1_passages.jsonl").read_text().splitlines() if l.strip()]
 FROZEN = json.loads((H.TINY_DATA / "p01_v1_encoded_ids.json").read_text())  # ids saved by the pre-change run
-CORES = {  # spec A11
+CORES = {
     "F1": "The weather today is mild.",
     "F2": "The library opens at nine.",
     "N0": "The following passage is a news article.",
@@ -64,7 +63,7 @@ def test_v1_data_file_untouched_since_base_commit():
 def test_v2_has_exactly_the_seven_conditions():
     cfg = _v2_cfg()
     got = set(cfg["prefixes"]) | set(cfg["fillers"])
-    assert got == set(CONDS_V2)  # includes N0
+    assert got == set(CONDS_V2)
 
 
 def test_v2_all_conditions_equal_length_for_all_30_passages(tok):
@@ -84,14 +83,14 @@ def test_v2_each_condition_is_pad_prefix_plus_core_ids(tok):
         ids = _v2_ids(tok, cfg, p)
         cores = dict(CORES)
         for c in ("H+", "H-", "P1", "P2"):
-            cores[c] = V1["prefixes"][c].format(**p)  # spec A11: H/P cores unchanged from v1
+            cores[c] = V1["prefixes"][c].format(**p)
         core_ids = {c: tok(s, add_special_tokens=False)["input_ids"] for c, s in cores.items()}
         n = max(len(x) for x in core_ids.values())
         assert min(len(x) for x in core_ids.values()) < n
         for c, cid in core_ids.items():
             pad = n - len(cid)
             assert list(ids[c]) == pad_ids[:pad] + cid, (p["id"], c)
-        assert any(n == len(x) for x in core_ids.values())  # longest core gets zero pad
+        assert any(n == len(x) for x in core_ids.values())
 
 
 def test_v2_cores_are_complete_sentences():

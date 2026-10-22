@@ -1,6 +1,4 @@
-"""VO6/F1: controlled model-free run directory (store.save layout as written by extract).
-
-Per passage k every position of condition c holds a constant vector, so distances are exact and independent of
+"""Per passage k every position of condition c holds a constant vector, so distances are exact and independent of
 the body-slice offset; positions outside the body hold condition-specific garbage (100*i) to expose non-body aggregation.
 P1 ratios over the 3 passages are 1, 2, 10 (median 2, mean 4.33). H+ logits are near one-hot vs a uniform F1,
 so forward KL(H+||F1) ~ log 6 while the reverse KL ~ 15 (strongly asymmetric). All values are exact in fp16.
@@ -27,7 +25,7 @@ def _const(val, g):  # (NKV, T, D): constant vector on body positions, condition
 
 
 def _kv(val, g):
-    return _const(val, g)[None]  # (1 kv layer, NKV, T, D)
+    return _const(val, g)[None]
 
 
 def _resid(val, g):
@@ -86,7 +84,7 @@ def test_kl_hplus_is_forward_kl_cond_to_f1_not_reverse(synth):
 
     fwd = {f"p{k:02d}": kl(_logits("H+", pk), _logits("F1", pk)) for k, pk in enumerate(PEAKS, start=1)}
     rev = {f"p{k:02d}": kl(_logits("F1", pk), _logits("H+", pk)) for k, pk in enumerate(PEAKS, start=1)}
-    assert all(abs(fwd[p] - rev[p]) > 5 for p in fwd)  # oracle sanity: the directions are far apart
+    assert all(abs(fwd[p] - rev[p]) > 5 for p in fwd)
     got = synth["kl"]["H+"]["per_passage"]
     assert set(got) == set(fwd)
     for p, e in fwd.items():

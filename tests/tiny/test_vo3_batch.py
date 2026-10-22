@@ -1,4 +1,3 @@
-"""VO3 (FR5, FR8, C5, C7, QR1): boundary value analysis, B in {1, 2, 7}; equal vs unequal lengths."""
 import pytest
 import torch
 
@@ -31,7 +30,7 @@ def test_capture_batch_equals_unbatched(arch, partial, B):
             assert a.shape == r.shape, (b, f)
             assert (a - r).abs().max().item() <= TOL, (b, f)
         assert (got[b].logits["mid"] - ref.logits["mid"]).abs().max().item() <= TOL
-    if B > 1:  # non-vacuity: items are genuinely different sequences
+    if B > 1:
         assert (got[0].resid - got[1].resid).abs().max() > 1e-2
 
 
@@ -78,12 +77,10 @@ def test_c7_unequal_lengths_raise_valueerror_listing_lengths(arch, partial):
         with pytest.raises(ValueError) as e:
             batch.stack_caches([c1, c2])
         assert "9" in str(e.value) and "13" in str(e.value)
-        assert len(calls) == n  # no forward run on the error path
+        assert len(calls) == n
     finally:
         h.remove()
 
-
-# ---------- G3: capture accepts a list of token-id sequences ----------
 
 @pytest.mark.parametrize("arch,partial", ARCHS, ids=["dense", "hybrid"])
 @pytest.mark.parametrize("B", [1, 3])

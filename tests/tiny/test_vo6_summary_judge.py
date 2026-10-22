@@ -1,10 +1,3 @@
-"""VO6 (FR11, FR12, C11, C12, QR5): summary and judge, 2-value BVA at each threshold J1-J4 + missing input.
-
-J1 goes through pilot.judge on patch rows (config full_all_kv@both on hybrid, full_all_kv on dense).
-J2-J4 go through the public pilot CLI (--summary v1.json v2.json --patch-rows ... --out dir -> judge.json) on
-synthetic summaries in the spec's summary schema. Decoys (non-resid reprs, v2 values for v1 conditions,
-other pair_ratio keys) are set so that reading the wrong field flips the verdict.
-"""
 import json
 import math
 import statistics
@@ -23,8 +16,6 @@ THRESH = {"J1": 0.99, "J2": 1.2, "J3": 0.8, "J4": 1.1}
 NAN = float("nan")
 BELOW = 1e-6
 
-
-# ---------- real tiny runs: C12, schema, pair_ratio oracle ----------
 
 @pytest.fixture(scope="module")
 def run_v1(tok, tmp_path_factory):
@@ -48,7 +39,7 @@ def run_v2(tok, tmp_path_factory):
 def test_summary_schema_v1(summ):
     assert summ["design"] == "v1" and summ["n_passages"] == 3
     assert summ["layers"]["kv"] == LAYERS and summ["layers"]["resid"] == LAYERS
-    assert not summ.get("pair_ratio")  # only when N0 is present
+    assert not summ.get("pair_ratio")
     for c in ("H+", "H-", "P1", "P2", "F2"):
         for r, vals in summ["ratio"][c].items():
             assert len(vals) == len(summ["layers"]["resid" if r == "resid" else "kv"]), (c, r)
@@ -119,8 +110,6 @@ def test_pair_ratio_p1_n0_equals_independent_distance_over_floor(tok, run_v2):
     assert any(not math.isnan(x) for x in got)
 
 
-# ---------- F1: independent oracles for ratio and kl (odd passage count: median != mean) ----------
-
 def _encode_v1(tok, i):
     cfg = json.loads((H.DATA / "exp1_prefixes.json").read_text())
     p = json.loads((H.DATA / "exp1_passages.jsonl").read_text().splitlines()[i])
@@ -140,9 +129,9 @@ def caps3(tok):
 
 
 def _mean_dist(cap_a, cap_b, enc, rep, layer):
-    a, b = enc["F1"].spans["body"]  # body tokens only
+    a, b = enc["F1"].spans["body"]
     if rep == "resid":
-        x, y = getattr(cap_a, rep)[layer][a + 1 : b + 1], getattr(cap_b, rep)[layer][a + 1 : b + 1]  # repo convention (tests/test_sanity.py)
+        x, y = getattr(cap_a, rep)[layer][a + 1 : b + 1], getattr(cap_b, rep)[layer][a + 1 : b + 1]
     else:
         x, y = getattr(cap_a, rep)[layer][..., a:b, :], getattr(cap_b, rep)[layer][..., a:b, :]
     return (x - y).norm(dim=-1).mean().item()
@@ -155,7 +144,7 @@ def test_ratio_p1_equals_median_over_passages_of_distance_over_floor(summ, caps3
     assert len(got) == len(layers)
     checked = 0
     for i, l in enumerate(layers):
-        ci = l + 1 if rep == "resid" else l  # spec v5: resid[j] = hidden_states[layers.resid[j] + 1]
+        ci = l + 1 if rep == "resid" else l  # resid[j] = hidden_states[layers.resid[j] + 1]
         per_pass = []
         for enc, cap in caps3.values():
             floor = _mean_dist(cap["F2"], cap["F1"], enc, rep, ci)
@@ -166,7 +155,7 @@ def test_ratio_p1_equals_median_over_passages_of_distance_over_floor(summ, caps3
             continue
         exp, mean = statistics.median(per_pass), statistics.mean(per_pass)
         assert got[i] == pytest.approx(exp, rel=2e-2), (rep, l, got[i], exp)
-        if abs(exp - mean) > 4e-2 * exp:  # distinguishable at tolerance: must not be the mean
+        if abs(exp - mean) > 4e-2 * exp:
             assert got[i] != pytest.approx(mean, rel=2e-2), (rep, l)
         checked += 1
     assert checked
@@ -190,10 +179,8 @@ def test_kl_hplus_per_passage_equals_forward_kl_at_body_last(summ, caps3):
     for pid, e in exps.items():
         assert got["per_passage"][pid] == pytest.approx(e, rel=5e-2, abs=1e-4), pid
     assert got["median"] == pytest.approx(statistics.median(exps.values()), rel=5e-2, abs=1e-4)
-    assert abs(_kl(torch.zeros(5), torch.arange(5.0)) - _kl(torch.arange(5.0), torch.zeros(5))) > 1e-3  # direction matters
+    assert abs(_kl(torch.zeros(5), torch.arange(5.0)) - _kl(torch.arange(5.0), torch.zeros(5))) > 1e-3
 
-
-# ---------- J1 through judge() ----------
 
 def _rows(values, cfg="full_all_kv@both", decoy_cfgs=("all_kv@both", "full_all_kv@kv", "full_all_kv@state", "layer_1@both")):
     rows = [{"passage": f"p{i:02d}", "donor": "P1", "recipient": "F1", "config": cfg, "recovery": v, "cont_logprob_delta": 0.0}
@@ -222,7 +209,7 @@ def test_j1_uses_median_not_mean_or_min():
 def test_c11_missing_patch_rows_gives_null_pass_with_reason():
     res = pilot.judge({}, [])
     assert res["J1"]["pass"] is None and res["J1"]["reason"] == "missing"
-    res = pilot.judge({}, [r for r in _rows([1.0]) if r["config"] != "full_all_kv@both"])  # rows exist but none qualifies
+    res = pilot.judge({}, [r for r in _rows([1.0]) if r["config"] != "full_all_kv@both"])
     assert res["J1"]["pass"] is None and res["J1"]["reason"] == "missing"
 
 
@@ -231,8 +218,6 @@ def test_judge_empty_inputs_all_criteria_null():
     for k in THRESH:
         assert res[k]["pass"] is None and res[k]["reason"] == "missing", k
 
-
-# ---------- J2-J4 through the pilot CLI on synthetic v1/v2 summaries ----------
 
 N_PASS = 10
 PIDS = [f"p{i:02d}" for i in range(N_PASS)]
@@ -259,10 +244,10 @@ def mk_v1(ratios=None, strict=None, ties=None):
 
 
 def mk_v2(n0=3.0, p1n0=3.0, drop_pair=False):
-    ratio = {c: {"resid": [0.1] * 3, "v": [0.1] * 3} for c in HP}  # v2 H/P must NOT be used for J2 (spec: from v1)
+    ratio = {c: {"resid": [0.1] * 3, "v": [0.1] * 3} for c in HP}
     ratio["N0"] = {"resid": _resid(n0), "v": [99.0] * 3}
     ratio["F2"] = {"resid": [NAN, 1.0, 1.0], "v": [NAN, 1.0, 1.0]}
-    kl = {c: _kl_cond(0, 0) for c in HP}  # v2 KL must NOT be used for J3 (spec: v1)
+    kl = {c: _kl_cond(0, 0) for c in HP}
     kl["F2"] = {"median": 1.0, "per_passage": {p: 1.0 for p in PIDS}}
     kl["F1"] = {"median": 0.0, "per_passage": {p: 0.0 for p in PIDS}}
     pair = {f"{a}|N0": {"resid": [NAN, 0.2, 9.0], "v": [99.0] * 3} for a in ("H+", "H-", "P2", "F1")}
@@ -354,8 +339,6 @@ def test_cli_without_patch_rows_marks_j1_missing(tmp_path, monkeypatch):
     assert res["J1"]["pass"] is None and res["J1"]["reason"] == "missing"
     assert res["J2"]["pass"] is True
 
-
-# ---------- G1/G2: single-summary judge input, required --summary ----------
 
 def test_judge_single_summary_dict_is_keyed_by_its_design_field():
     rows = _rows([1.0] * 3)

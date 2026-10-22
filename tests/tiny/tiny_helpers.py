@@ -93,7 +93,6 @@ def is_kv_layer(layer):
 
 
 def snapshot(cache):
-    """Deep copy of every tensor held by a cache, layer by layer."""
     out = []
     for layer in cache.layers:
         d = {}

@@ -9,7 +9,6 @@ def _lengths(cache) -> list[int | None]:
 
 @torch.no_grad()
 def stack_caches(caches: list):
-    """Concatenate equal-length caches along the batch dim into a new cache; inputs are not mutated."""
     if not caches:
         raise ValueError("no caches to stack")
     ref = _lengths(caches[0])
@@ -32,7 +31,6 @@ def stack_caches(caches: list):
 
 
 def split_logits(logits: torch.Tensor, n: int | None = None) -> list[torch.Tensor]:
-    """Split batched logits [B, ...] into per-row tensors."""
     if n is not None and logits.shape[0] != n:
         raise ValueError(f"expected batch {n}, got {logits.shape[0]}")
     return list(logits.unbind(0))

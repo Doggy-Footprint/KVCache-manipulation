@@ -1,9 +1,5 @@
-"""VO7c (G1; FR6/FR7 mode encoding): patch rows of mode kv must call mix_cache(state=False).
-
-Recovery equality alone cannot see a state swap on @kv rows in the tiny hybrid (state forgets the prefix,
-@both - @kv <= ~4e-4 < 1e-3), so the calls to patching.mix_cache are recorded and compared with row counts
-read from results.jsonl: @state -> state=True, layers=[]; @both -> state=True, kv layers; @kv -> state=False.
-"""
+"""Recovery equality cannot see a state swap on @kv rows in the tiny hybrid (state forgets the prefix,
+@both - @kv <= ~4e-4 < 1e-3), so mix_cache calls are recorded and compared with row counts from results.jsonl."""
 import json
 
 import pytest

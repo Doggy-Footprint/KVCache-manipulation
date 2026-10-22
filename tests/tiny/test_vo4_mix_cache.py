@@ -1,9 +1,3 @@
-"""VO4 (FR6, FR7, C3, C4, C8): mix_cache decision table, rows {dense, hybrid} x {kv, state, both}.
-
-Mode encoding used here: kv = state False with layers; state = state True with layers=[] (span ignored);
-both = state True with layers over the kv layers. Oracles: snapshots of the inputs, direct forward of the
-donor ids + suffix, and explicit row/tensor slicing.
-"""
 import pytest
 import torch
 
@@ -49,8 +43,6 @@ def _mix(mode, rc, dc, span, layers):
     return P.mix_cache(rc, dc, span, layers, state=True)
 
 
-# ---- dense rows ----
-
 @pytest.mark.parametrize("mode", ["state", "both"])
 def test_dense_state_modes_raise_and_leave_inputs_unchanged(dense, mode):
     model, _, _, rc, dc = dense
@@ -72,8 +64,6 @@ def test_dense_kv_row_replaces_exact_slice(dense):
             assert torch.equal(getattr(layer, name), exp), (li, name)
     assert H.same_snapshot(rc, rs) and H.same_snapshot(dc, ds)
 
-
-# ---- hybrid rows ----
 
 def _states(snap, kv_idx_set=(1, 3)):
     return {li: {k: v for k, v in d.items() if "states" in k} for li, d in enumerate(snap) if li not in kv_idx_set}
@@ -101,25 +91,22 @@ def test_hybrid_modes_follow_spec_and_do_not_mutate(hybrid, mode):
     mixed = _mix(mode, rc, dc, span, H.HYBRID_KV)
     ms = H.snapshot(mixed)
     assert mixed is not rc and mixed is not dc
-    # K/V
     for li in H.HYBRID_KV:
         for name in ("keys", "values"):
             exp = rs[li][name].clone()
             if mode in ("kv", "both"):
                 exp[:, :, span[0] : span[1]] = ds[li][name][:, :, span[0] : span[1]]
             assert torch.equal(ms[li][name], exp), (mode, li, name)
-    # states: whole donor state in state/both (span ignored), recipient's in kv
     src = ds if mode in ("state", "both") else rs
     for li in (0, 2):
         for k in rs[li]:
             assert torch.equal(ms[li][k], src[li][k]), (mode, li, k)
     assert H.same_snapshot(rc, rs) and H.same_snapshot(dc, ds)
-    # C4: each single-mode readout differs from both recipient and donor readouts
     out = P.readout(model, mixed, SUFFIX)
     if mode in ("kv", "state"):
         assert (out - _direct_readout(model, rids)).abs().max() > 1e-3
         assert (out - _direct_readout(model, dids)).abs().max() > 1e-3
-    assert H.same_snapshot(mixed, ms)  # readout must not mutate the mixed cache either
+    assert H.same_snapshot(mixed, ms)
 
 
 def test_c3_hybrid_both_full_span_all_kv_layers_equals_donor_readout(hybrid):
@@ -127,7 +114,7 @@ def test_c3_hybrid_both_full_span_all_kv_layers_equals_donor_readout(hybrid):
     mixed = _mix("both", rc, dc, (0, T), H.HYBRID_KV)
     out, ref = P.readout(model, mixed, SUFFIX), _direct_readout(model, dids)
     assert (out - ref).abs().max().item() <= 1e-4
-    assert (_direct_readout(model, rids) - ref).abs().max() > 1e-3  # non-vacuity
+    assert (_direct_readout(model, rids) - ref).abs().max() > 1e-3
 
 
 def test_state_mode_ignores_span(hybrid):
@@ -196,7 +183,7 @@ def test_linear_layer_ids_in_kv_mode_are_skipped_without_error(hybrid):
     rs, ds = H.snapshot(rc), H.snapshot(dc)
     mixed = P.mix_cache(rc, dc, (2, T - 1), [0, 1, 2, 3])
     ms = H.snapshot(mixed)
-    for li in (0, 2):  # linear layers: state untouched (recipient's)
+    for li in (0, 2):
         assert all(torch.equal(ms[li][k], rs[li][k]) for k in rs[li]), li
     for li in H.HYBRID_KV:
         for name in ("keys", "values"):

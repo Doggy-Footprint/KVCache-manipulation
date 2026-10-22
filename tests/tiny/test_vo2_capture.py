@@ -1,10 +1,3 @@
-"""VO2 (FR4, C1, C2): capture on tiny dense / hybrid models, classification tree leaves.
-
-Leaves: {arch dense (gate off), hybrid (gate on; Qwen3.5 output-gated attention)} x {partial_rotary 1.0, 0.25}.
-Oracles are the HF model's own cache, hooks on its attention modules, and its own rotary helper.
-Note: Qwen3 dense ignores partial_rotary_factor (library behaviour), so the dense/0.25 leaf is exercised
-but is numerically the full-rotary case.
-"""
 import importlib
 
 import pytest
@@ -57,7 +50,6 @@ def test_post_rope_k_and_v_equal_cache(leaf):
         layer = cache.layers[i]
         assert torch.allclose(cap.k_post[j], layer.keys[0], atol=1e-4), i
         assert torch.allclose(cap.v[j], layer.values[0], atol=1e-4), i
-    # k_pre must differ from k_post (rotation applied) but only on rotary dims
     assert (cap.k_pre - cap.k_post).abs().max() > 1e-3
 
 
@@ -142,7 +134,7 @@ def test_first_kv_layer_v_context_free_only_when_layer0(leaf):
     diff = (ca.v[0, :, -8:] - cb.v[0, :, -8:]).abs().max().item()
     if ca.kv_layers[0] == 0:  # layer-0 V is a per-token function of the embedding
         assert diff < 1e-5
-        assert (ca.v[1, :, -8:] - cb.v[1, :, -8:]).abs().max() > 1e-4  # non-vacuity: deeper layers see context
+        assert (ca.v[1, :, -8:] - cb.v[1, :, -8:]).abs().max() > 1e-4
     else:
         assert diff > 1e-4  # hybrid first kv layer follows a linear layer, so V is contextual
     assert (ca.resid[0, -8:] - cb.resid[0, -8:]).abs().max() < 1e-6

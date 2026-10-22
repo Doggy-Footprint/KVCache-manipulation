@@ -1,7 +1,4 @@
-"""VO1b (FR3, C17, QR3): load(device=None) default placement for legacy keys, all 4 combinations
-{"0.6B","4B"} x {mps available, not available}. torch.nn.Module.to is recorded and replaced by a no-op,
-so nothing is ever moved (in particular nothing onto MPS).
-"""
+"""torch.nn.Module.to is recorded and replaced by a no-op, so nothing is moved onto MPS."""
 import pytest
 import torch
 import transformers
