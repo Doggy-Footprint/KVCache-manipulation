@@ -332,8 +332,11 @@ def test_cli_exact_config_names_per_donor(cli_runs):
     rev = [r for r in rows if r["donor"] == "F1" and r["recipient"] == "P1"]
     assert [r["config"] for r in rev] == ["reverse_all_kv"]
     sh = [r for r in rows if r["donor"] == "P1_shuffled"]
-    assert [(r["recipient"], r["config"]) for r in sh] == [("F1", "shuffled_all_kv")]
-    assert len(rows) == PER_DONOR * len(DONORS) + 2
+    assert [(r["recipient"], r["config"]) for r in sh] == [("F1", "shuffled_all_kv")] * 3
+    srcs = [r["shuffle_source"] for r in sh]
+    assert len(set(srcs)) == 3 and "p01" not in srcs
+    assert not any("shuffle_source" in r for r in rows if r["donor"] != "P1_shuffled")
+    assert len(rows) == PER_DONOR * len(DONORS) + 4
     assert {r["passage"] for r in rows} == {"p01"}
 
 
@@ -355,7 +358,7 @@ def test_cli_cumulative_endpoints_equal_singletons(cli_runs):
 @pytest.mark.slow
 def test_cli_rerun_bit_identical(cli_runs):
     a, b = cli_runs
-    ident = lambda r: (r["passage"], r["donor"], r["recipient"], r["config"])
+    ident = lambda r: (r["passage"], r["donor"], r["recipient"], r["config"], r.get("shuffle_source"))
     assert Counter(map(ident, a)) == Counter(map(ident, b)), "row identities differ between runs"
     fields = [k for k in a[0] if k.startswith("recovery") or k.startswith("cont_logprob")]
     assert fields
@@ -366,13 +369,18 @@ def test_cli_rerun_bit_identical(cli_runs):
 
 
 @pytest.mark.slow
-def test_patch_spans_passed_to_mix_cache(inproc, p01_encs, p02_encs):
-    _, calls = inproc
+def test_patch_spans_passed_to_mix_cache(inproc, model_tok, p01_encs):
+    from conftest import encode_passage
+
+    rows, calls = inproc
+    ids = [json.loads(l)["id"] for l in (ROOT / "data" / "exp1_passages.jsonl").read_text().splitlines() if l.strip()]
     b0, b1 = p01_encs["F1"].spans["body"]
-    cut = min(b1, p02_encs["P1"].spans["body"][1])
-    assert len(calls) == PER_DONOR * len(DONORS) + 2
-    assert all(c == (b0, b1) for c in calls[:-1])
-    assert calls[-1] == (b0, cut)
+    srcs = [r["shuffle_source"] for r in rows if r["donor"] == "P1_shuffled"]
+    assert srcs == P.shuffle_sources("p01", ids)
+    cuts = [min(b1, encode_passage(model_tok[1], ids.index(q))["P1"].spans["body"][1]) for q in srcs]
+    assert len(calls) == PER_DONOR * len(DONORS) + 4
+    assert all(c == (b0, b1) for c in calls[:-3])
+    assert calls[-3:] == [(b0, c) for c in cuts]
 
 
 def _expected_delta(model, tok, enc, donor, recipient, layers, span):

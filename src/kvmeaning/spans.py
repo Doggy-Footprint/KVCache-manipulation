@@ -26,7 +26,15 @@ def _fit(tok, pad_text: str, n: int) -> list[int]:
     return ids[:n]
 
 
-def exp1_prefix_ids(tok, prefixes: dict[str, str], fillers: dict[str, str], pad_text: str) -> dict[str, list[int]]:
+def exp1_prefix_ids(tok, prefixes: dict[str, str], fillers: dict[str, str], pad_text: str, design: str = "v1") -> dict[str, list[int]]:
+    if design == "v2":
+        # Every condition is shared left pad + one complete core sentence, so format and length are identical across conditions.
+        cores = {**prefixes, **fillers}
+        ids = {c: _ids(tok, t) for c, t in cores.items()}
+        n = max(len(v) for v in ids.values())
+        return {c: _fit(tok, pad_text, n - len(v)) + v for c, v in ids.items()}
+    if design != "v1":
+        raise ValueError(f"design must be 'v1' or 'v2', got {design!r}")
     # Left-padding keeps the instruction adjacent to the body.
     instr = {c: _ids(tok, p) for c, p in prefixes.items()}
     n = max(len(v) for v in instr.values())

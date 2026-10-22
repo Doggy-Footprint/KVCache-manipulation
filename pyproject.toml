@@ -14,7 +14,8 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest", "jupyter"]
+dev = ["pytest", "pytest-cov", "mutmut", "jupyter"]
+modal = ["modal"]
 
 [build-system]
 requires = ["hatchling"]
@@ -25,3 +26,6 @@ packages = ["src/kvmeaning"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv]
+default-groups = ["dev", "modal"]

@@ -1,0 +1,14 @@
+{
+ "prefixes": {
+  "H+": "The following passage is about {topic}.",
+  "H-": "The following passage is about {wrong_topic}.",
+  "P1": "You are a skeptical defense lawyer. Read the following passage carefully and look for weaknesses, gaps, and unsupported claims in every statement.",
+  "P2": "You are an empathetic counselor. Read the following passage carefully and pay attention to how each person involved might be feeling and what they need.",
+  "N0": "The following passage is a news article."
+ },
+ "fillers": {
+  "F1": "The weather today is mild.",
+  "F2": "The library opens at nine."
+ },
+ "pad_text": "Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below."
+}
