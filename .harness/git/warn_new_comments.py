@@ -1,31 +1,86 @@
 #!/usr/bin/env python3
+import io
 import re
 import subprocess
 import sys
+import tokenize
 from collections import defaultdict
 
-COMMENT_PATTERN = re.compile(r"(?:^|\s)(?://|/\*|#|'''|\"\"\")")
+COMMENT_PATTERN = re.compile(r"\s*(?://|/\*|#|'''|\"\"\")")
 APPROVAL_LABEL = "comments-approved"
 CODE_EXTENSIONS = {
     ".c", ".cc", ".cpp", ".cs", ".go", ".h", ".hpp", ".java", ".js",
     ".jsx", ".kt", ".php", ".py", ".rb", ".rs", ".sh", ".swift", ".ts",
     ".tsx", ".yaml", ".yml",
 }
+STATEMENT_START_TOKENS = {tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT, tokenize.ENCODING}
+SKIPPED_TOKENS = {tokenize.NL, tokenize.COMMENT}
+TOOL_DIRECTIVE_PATTERN = re.compile(r"#\s*(?:noqa(?::|\s|$)|(?:type|pragma|pylint|mypy|pyright|fmt|isort):)")
 
 
-def _added_comments(diff_args: list[str]) -> list[tuple[str, int, str]]:
+def _new_content(revision: str, path: str) -> str | None:
+    result = subprocess.run(
+        ["git", "show", f"{revision}:{path}"],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return result.stdout if result.returncode == 0 else None
+
+
+def _python_comment_lines(source: str) -> set[int] | None:
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    except (tokenize.TokenError, SyntaxError):
+        return None
+    lines = {
+        token.start[0]
+        for token in tokens
+        if token.type == tokenize.COMMENT and not TOOL_DIRECTIVE_PATTERN.match(token.string)
+    }
+    significant = [token for token in tokens if token.type not in SKIPPED_TOKENS]
+    index = 0
+    while index < len(significant):
+        if significant[index].type != tokenize.STRING:
+            index += 1
+            continue
+        first = index
+        while index < len(significant) and significant[index].type == tokenize.STRING:
+            index += 1
+        starts_statement = first == 0 or significant[first - 1].type in STATEMENT_START_TOKENS
+        ends_statement = index == len(significant) or significant[index].type in (tokenize.NEWLINE, tokenize.ENDMARKER)
+        if starts_statement and ends_statement:
+            lines.update(range(significant[first].start[0], significant[index - 1].end[0] + 1))
+    return lines
+
+
+def _is_comment(line_number: int, content: str, python_lines: set[int] | None) -> bool:
+    if line_number == 1 and content.startswith("#!"):
+        return False
+    if python_lines is not None:
+        return line_number in python_lines
+    return bool(COMMENT_PATTERN.match(content))
+
+
+def _added_comments(diff_args: list[str], revision: str) -> list[tuple[str, int, str]]:
     result = subprocess.run(
         ["git", "diff", "--unified=0", "--no-color", *diff_args, "--"],
         check=True,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     findings = []
     path = None
     line_number = None
+    python_lines = None
     for line in result.stdout.splitlines():
-        if line.startswith("+++ b/"):
-            path = line[6:]
+        if line.startswith("+++ "):
+            path = line[6:] if line.startswith("+++ b/") else None
+            python_lines = None
+            if path and path.endswith(".py"):
+                source = _new_content(revision, path)
+                python_lines = _python_comment_lines(source) if source is not None else None
             continue
         if line.startswith("@@ "):
             match = re.search(r"\+(\d+)(?:,(\d+))?", line)
@@ -34,19 +89,19 @@ def _added_comments(diff_args: list[str]) -> list[tuple[str, int, str]]:
         if not path or line_number is None or not line.startswith("+"):
             continue
         content = line[1:]
-        if path != "/dev/null" and any(path.endswith(ext) for ext in CODE_EXTENSIONS):
-            if COMMENT_PATTERN.match(content):
+        if any(path.endswith(ext) for ext in CODE_EXTENSIONS):
+            if _is_comment(line_number, content, python_lines):
                 findings.append((path, line_number, content.strip()))
         line_number += 1
     return findings
 
 
 def changed_lines(base: str, head: str) -> list[tuple[str, int, str]]:
-    return _added_comments([f"{base}...{head}"])
+    return _added_comments([f"{base}...{head}"], head)
 
 
 def staged_lines() -> list[tuple[str, int, str]]:
-    return _added_comments(["--cached"])
+    return _added_comments(["--cached"], "")
 
 
 def usage() -> int:

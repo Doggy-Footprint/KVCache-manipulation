@@ -97,9 +97,7 @@ def validate(path: Path) -> list[str]:
         errors.append("max_verifier_invocations must be 2")
     if "max_correction_rounds" in values:
         errors.append("max_correction_rounds is obsolete; migrate the spec")
-    if "handoff" not in values:
-        errors.append("handoff must be present; use none when absent")
-    elif values["handoff"] != "none":
+    if values.get("handoff", "none") != "none":
         handoff = Path(values["handoff"])
         try:
             (REPO_ROOT / handoff).resolve().relative_to(REPO_ROOT)
@@ -213,12 +211,11 @@ def cmd_session(_args) -> int:
         if status in TERMINAL:
             archive(path, status)
             continue
-        handoff = values.get("handoff", "none")
-        handoff_path = REPO_ROOT / handoff
-        if status in {"draft", "active"} and (handoff == "none" or not handoff_path.is_file()):
+        if status in {"draft", "active"}:
             print(
-                f"spec lifecycle: {path.relative_to(REPO_ROOT)} is {status} without a handoff; "
-                f"review progress from base commit {values.get('base_commit', 'unknown')} before resuming or aborting",
+                f"spec lifecycle: {path.relative_to(REPO_ROOT)} is {status}; read the Next Session of the latest "
+                f"progress in {PATHS.progress.relative_to(config.REPO_ROOT)}/ with `/continue-on`, or compare base "
+                f"commit {values.get('base_commit', 'unknown')} with HEAD, before resuming or aborting",
                 file=sys.stderr,
             )
     return 0

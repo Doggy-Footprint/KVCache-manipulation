@@ -9,3 +9,4 @@ runs/
 *.safetensors
 .ipynb_checkpoints/
 __pycache__/
+.harness/sessions/progress-*.json

@@ -9,7 +9,8 @@ Covers only rules that can be verified without judgement calls:
     consistency between code and <docs_root>/synced-comments/<id>.md, plus
     checking the tracking file's code_hash against participating files'
     non-comment content), scanned over `git ls-files` only
-  - Required headings for rejections/ and handoff/ managed files
+  - Required headings for try-n-fail/ and todos/ managed files
+  - Progress records: format of progress/ and unmasked secrets in progress-logs/ too
 
 Exit code is non-zero if any rule is violated.
 """
@@ -21,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 import config  # noqa: E402
+import progress  # noqa: E402
 
 PATHS = config.load_paths()
 REPO_ROOT = config.REPO_ROOT
@@ -43,21 +45,19 @@ TEXT_FILE_EXTS = {
 }
 
 REQUIRED_HEADINGS = {
-    PATHS.rejections: [
-        "## Context",
-        "## Rejected Alternative",
-        "## Reason",
+    PATHS.try_n_fail: [
+        "## Goal",
+        "## Attempts",
         "## Revisit Condition",
-        "## Chosen Instead",
     ],
-    PATHS.handoff: [
-        "## State",
-        "## Failed Attempts",
+    PATHS.todos: [
         "## Next Step",
-        "## Open Questions",
     ],
 }
+TITLED_DIRS = {PATHS.todos}
 WORKFLOW_DOC_DIRS = {"specs", "spec-logs"}
+PROGRESS_DOC_DIRS = {"progress", "progress-logs"}
+RETIRED_DOC_DIRS = {"adr", "rejections", "handoff"}
 
 
 def rel(path: Path) -> str:
@@ -71,7 +71,9 @@ def iter_docs_root_files():
         if not path.is_file():
             continue
         docs_parts = path.relative_to(PATHS.docs_root).parts
-        if "stale" in docs_parts or (docs_parts and docs_parts[0] in WORKFLOW_DOC_DIRS):
+        if "stale" in docs_parts or (
+            docs_parts and docs_parts[0] in WORKFLOW_DOC_DIRS | PROGRESS_DOC_DIRS | RETIRED_DOC_DIRS
+        ):
             continue
         if any(part in EXCLUDE_DIRS for part in path.relative_to(REPO_ROOT).parts):
             continue
@@ -287,15 +289,40 @@ def check_required_headings(errors: list):
                 h for h in headings
                 if not re.search(rf"(?m)^{re.escape(h)}\s*$", text)
             ]
-            if directory == PATHS.handoff and not re.search(r"(?m)^## (User Query|Goal)\s*$", text):
-                missing.insert(0, "## User Query")
-            if directory == PATHS.handoff and not re.search(r"(?m)^## Contract Snapshot\s*$", text):
-                missing.extend(
-                    heading for heading in ("## Spec", "## Execution Ledger")
-                    if not re.search(rf"(?m)^{re.escape(heading)}\s*$", text)
-                )
+            if directory in TITLED_DIRS and not re.search(r"(?m)^# \S", text):
+                missing.insert(0, "# <title>")
             if missing:
                 errors.append(f"{rel(path)}: missing required heading(s) {missing}")
+
+
+def check_progress(errors: list):
+    if not PATHS.progress.is_dir():
+        return
+    current = sorted(path for path in PATHS.progress.glob("*.md") if path.is_file())
+    if len(current) > 1:
+        errors.append(
+            f"{rel(PATHS.progress)}: holds {len(current)} progress files ({', '.join(p.name for p in current)}); "
+            f"keep only the current session's and move the others to {rel(PATHS.progress_logs)}/"
+        )
+    for path in current:
+        parsed = progress.parse(path.read_text(encoding="utf-8", errors="replace"))
+        for line, message in progress.format_findings(parsed):
+            errors.append(f"{rel(path)}:{line}: {message}")
+
+
+def check_progress_secrets(errors: list):
+    suffixes = config.load_mask_host_suffixes()
+    for directory in (PATHS.progress, PATHS.progress_logs):
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.rglob("*.md")):
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for line, category in progress.unmasked(text, suffixes):
+                errors.append(
+                    f"{rel(path)}:{line}: unmasked {category}; replace it with [masked:{category}]"
+                )
 
 
 def main() -> int:
@@ -303,6 +330,8 @@ def main() -> int:
     check_index_and_staleness(errors)
     check_synced_comments(errors)
     check_required_headings(errors)
+    check_progress(errors)
+    check_progress_secrets(errors)
 
     if errors:
         print("harness rule violations found:\n", file=sys.stderr)

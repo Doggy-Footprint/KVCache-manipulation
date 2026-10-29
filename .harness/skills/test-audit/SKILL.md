@@ -1,6 +1,6 @@
 ---
 name: test-audit
-description: User-invoked audit of an existing test suite (for example tests written before the harness was installed) that leaves feature-grouped handoffs for follow-up workflow-approach runs. Invoke only when the user asks for a test audit.
+description: User-invoked audit of an existing test suite (for example tests written before the harness was installed) that leaves feature-grouped todos for follow-up workflow-approach runs. Invoke only when the user asks for a test audit.
 disable-model-invocation: true
 argument-hint: "[path]"
 ---
@@ -72,16 +72,17 @@ Per feature, sample hand mutations (a changed condition, boundary, operator, or 
 
 Group every finding by feature, each as one of: delete tests, add tests, fix tests, fix implementation. Split any group that is larger than one workflow-approach run into several groups.
 
-# Handoff
+# Todos
 
-Write one `agent-docs/handoff/<16-hex-id>-test-audit-<feature>.md` per group, following the Handoff Rule structure in `AGENTS.md`:
+Write one `agent-docs/todos/<16-hex-id>-test-audit-<feature>.md` per group, following the Todo Rule in `AGENTS.md`:
 
-- `## Spec` is `none — to be created by a follow-up workflow-approach`.
-- `## Execution Ledger` holds the scan, run, and mutation evidence for that group.
-- Add a matching entry to `agent-docs/handoff/index.md`.
+- `## Goal` names the feature and the finding kinds.
+- `## Next Step` is `run workflow-approach for this group`.
+- `## Evidence` holds the scan, run, and mutation evidence for that group.
+- Add a matching entry to `agent-docs/todos/index.md`.
 
 Do not edit code or tests, other than the temporary hand mutations restored through `seed.py`.
 
 # Report
 
-List the groups (feature, finding kinds, handoff path) and the recommended order to run them.
+List the groups (feature, finding kinds, todo path) and the recommended order to run them.

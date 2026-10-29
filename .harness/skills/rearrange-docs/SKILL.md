@@ -25,7 +25,7 @@ Confirm every hypothesis with the user before the Diagnose step. If the diff con
 In scope are documents governed by the harness rules in `AGENTS.md` (standalone docs, inline comments, and docstrings):
 - `AGENTS.md` and `CLAUDE.md`, outside the managed block (`<!-- harness:begin … -->` to `<!-- harness:end -->`);
 - README files and other standalone docs about the changed behavior;
-- `agent-docs/` records: `adr`, `rejections`, `handoff`, `synced-comments`, and their `index.md`;
+- `agent-docs/` records: `try-n-fail`, `todos`, `synced-comments`, and their `index.md`;
 - skill and agent definitions the project owns;
 - comments and docstrings in the files the selected commits touched.
 
@@ -71,11 +71,10 @@ Get user confirmation with question cards, one card per file. Put all `dangling`
 - Change meaning only where the confirmed intent requires it. Propose any other improvement separately, labeled as outside the selected commits.
 - Keep each document's language, voice, and heading structure.
 - Records are history; do not rewrite their past content.
-  - For an ADR, propose a superseding ADR or marking it stale under the ADR Rule.
-  - Keep rejection reasons and Failed Attempts rows.
-  - Move an adopted rejection or a completed handoff to `stale/` under the Index & Staleness Management rule.
+  - Keep try-n-fail Attempts rows and the Failed Attempts rows of todos moved from handoffs.
+  - Move a try-n-fail record whose goal was dropped or achieved, or a completed todo, to `stale/` under the Index & Staleness Management rule.
 - Comments follow Comment Enforcement. Edits to synced comments follow the Shared Comment & Docstring Synchronization rules (version, count, `code_hash`, version log).
-- The ADR "DO NOT Include" list applies to every rewritten instruction.
+- The Record Writing exclusions apply to every rewritten instruction.
 - Before editing a document that has uncommitted changes, save a copy of it for the Verify step.
 
 # Verify

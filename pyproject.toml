@@ -14,7 +14,13 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest", "pytest-cov", "mutmut", "jupyter"]
+dev = [
+    "pytest",
+ "pytest-cov",
+ "mutmut",
+ "jupyter",
+ "hypothesis>=6.170.8",
+]
 modal = ["modal"]
 
 [build-system]

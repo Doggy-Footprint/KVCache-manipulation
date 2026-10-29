@@ -1,4 +1,5 @@
 {
   "docs_root": "agent-docs",
-  "exclude_dirs": [".git", "node_modules", ".harness"]
+  "exclude_dirs": [".git", "node_modules", ".harness"],
+  "mask_host_suffixes": [".corp", ".internal", ".local", ".lan", ".intranet"]
 }

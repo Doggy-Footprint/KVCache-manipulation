@@ -4,8 +4,8 @@
 
 ## Principles
 1. **Code is the Ground Truth**: Document only non-obvious rationale, behaviors, and constraints that cannot be inferred from the code.
-2. **Preserve Rejection Reasons**: Rejected design alternatives keep their rejection reason.
-3. **Preserve Failed Attempts**: Handoffs keep attempted-but-failed approaches.
+2. **Preserve Failed Attempts**: Approaches whose failure took real work to discover (an implementation, a run, or an investigation, not a reading of the code), and concrete proposals the user rejected, keep their evidence and cause: in the session progress while the task is open, in a try-n-fail record afterwards.
+3. **Record Observations, Not Mandates**: Records carried across sessions state what was observed, its evidence, and how to re-check it. They do not bind a later session to an earlier session's choices; a later session re-checks and decides for itself.
 
 ### Comment Enforcement
 
@@ -17,8 +17,19 @@ A comment/docstring is allowed only when it records a non-obvious:
 
 Do not use comments to narrate code, restate names/types/control flow, provide tutorials, or justify ordinary implementation choices.
 
+### Record Writing
+
+Every record under `agent-docs/` excludes:
+- tutorials and concepts;
+- rhetorical expressions;
+- non-deterministic, non-falsifiable, or session-dependent sentences.
+
+## Commit Stamp
+
+A hook writes `commit: <HEAD at last write>` into the frontmatter of every Markdown document under `agent-docs/` except `index.md` and `stale.md`. Do not edit it by hand. Before relying on a record, compare its `commit` with HEAD and re-check claims about code changed since then.
+
 ## Index & Staleness Management
-1. Every agent-managed directory (e.g., `agent-docs/adr`, `agent-docs/rejections`, `agent-docs/handoff`) must contain `index.md`, `stale.md`, and a `stale/` directory. `agent-docs/specs/` and `agent-docs/spec-logs/` are workflow state and immutable run records, so they are exempt.
+1. Every agent-managed directory (e.g., `agent-docs/try-n-fail`, `agent-docs/todos`) must contain `index.md`, `stale.md`, and a `stale/` directory. `agent-docs/specs/` and `agent-docs/spec-logs/` are workflow state and run records, and `agent-docs/progress/` and `agent-docs/progress-logs/` are session records, so they are exempt. `agent-docs/adr/` and `agent-docs/rejections/` from harness versions before 0.29.0, and `agent-docs/handoff/` from versions before 0.33.0, are no longer managed or checked.
 2. File Naming: `<16-char-hex-id>-<kebab-case-name>.md` (e.g., `3f8a9c12b0e45d67-auth-flow.md`).
 3. `index.md` Format: entries separated by `---`:
    ````
@@ -55,86 +66,56 @@ Apply when an identical comment or docstring must be maintained across multiple 
    - remove it from every referenced code location;
    - increment the version, record the removal reason in the version log, and add `obsolete: true` to the frontmatter.
 
-## Architecture Decision Record Rule
+## Try-n-Fail Rule
 
-Propose an ADR to the user with the checklist and contents below; never write one on your own decision.
-ADRs record past architectural decisions, not immutable principles.
+Directory: `agent-docs/try-n-fail/`.
 
-### Checklist for updating ADR
-
-Create an ADR only if all hold:
-
-- [ ] The decision is expensive or risky to reverse.
-- [ ] A concrete alternative was seriously considered and rejected.
-- [ ] The reason for the decision cannot be reliably recovered from the code alone.
-
-### Contents
-
-- Title / Status
-- Context
-- Decision
-- Alternatives: actually considered but rejected (capped to 1-2)
-- Consequences: positive / negative (capped to 1-2 each)
-
-#### DO NOT Include
-
-- Tutorials, concepts.
-- Rhetorical expressions.
-- Non-deterministic sentences.
-- Non-falsifiable sentences.
-- Session-dependent sentences.
-
-## Rejection Record Rule
-
-Directory: `agent-docs/rejections/`.
-
-Applies when the user rejects a concretely proposed design alternative and the reason cannot be recovered from code. Show the draft to the user and write only after confirmation. If all ADR checklist items hold, propose an ADR (its Alternatives section) instead of a rejection record.
+Records approaches a later task could plausibly try again: an attempt whose failure took real work to discover (an implementation, a run, or an investigation, not a reading of the code), or a concrete proposal the user rejected. Candidates come from a progress's `### Failed Attempts`, a spec's execution ledger, or a rejection in conversation. Show the draft to the user and write only after confirmation.
 
 Required file structure:
 
 - `#` Title
-- `## Context`
-- `## Rejected Alternative`
-- `## Reason`
-- `## Revisit Condition`
-- `## Chosen Instead` (repo path or ADR file)
+- `## Goal` (what the attempts tried to achieve)
+- `## Attempts` (table `| attempt | failure evidence | cause |`; cause marked `verified`, `hypothesis`, or `user rejected: <reason>`)
+- `## Revisit Condition` (the observable change that would make another attempt worthwhile)
 
-The ADR "DO NOT Include" list applies.
+Append rows for new attempts at the same goal; never delete or edit existing rows. When the goal is dropped or an attempt later succeeds, mark the record stale.
 
-When the revisit condition is met and the alternative is adopted, remove its entry from `index.md` and move the file to `stale/`.
+## Progress Rule
 
-## Handoff Rule
+Directory: `agent-docs/progress/`, holding at most one `<16-char-hex-id>-<kebab-case-name>.md`, the current session's. Every session that changes repository files writes one and commits it with the work. When a new session writes its progress, a hook moves the previous one to `agent-docs/progress-logs/` under the same name; a merge moves progress files it adds there too. One progress per session: merge into the existing one instead of writing a second. Parallel sessions on one checkout are not supported.
 
-Directory: `agent-docs/handoff/`.
-
-Write when a workflow-approach task exhausts its verifier budget, cannot make progress without a user decision or external change, the user pauses or stops mid-task, or the user requests it.
+Frontmatter: `session` (Claude Code session id), `before` (repo path of the progress moved to logs when this one was created, or `none`), `previous` (repo path of the progress this session continued through `/continue-on`, or `none`), `branch`, and the `commit` stamp. `before` records order only; `previous` records an explicit continuation.
 
 Required file structure:
 
 - `#` Title
-- `## User Query` (user's original words)
-- `## State` (branch, commit, changed files)
-- `## Failed Attempts` (table `| attempt | failure evidence | cause |`, cause marked `verified` or `hypothesis`)
-- `## Next Step`
-- `## Open Questions`
-- `## Spec` (active or archived spec path, version, status, and run ID)
-- `## Execution Ledger` (findings and dispositions, evidence, fuzz, and mutation outcomes (hand and tool), correction and verifier counters)
+- `## Next Session` with `### State`, `### Next Step`, `### Constraints`, `### Verify`, `### Dead Ends`, `### Related`
+- `## Record` with `### Changes`, `### Commands`, `### Failed Attempts` (table `| attempt | failure evidence | cause |`, cause marked `verified` or `hypothesis`), `### Sources`, `### User Requests`
 
-An incomplete nonterminal workflow keeps its active spec in `agent-docs/specs/`
-and records this handoff path in the spec. A limit handoff points to the archived
-spec in `agent-docs/spec-logs/`. The handoff must still state remaining work and
-failed attempts without requiring telemetry to reconstruct them.
-Handoffs created before harness 0.7.0 may retain `## Contract Snapshot` instead
-of `## Spec` and `## Execution Ledger`; do not rewrite historical records solely
-to change their format.
-Handoffs created before harness 0.27.0 may retain `## Goal` instead of `## User Query`.
+Every `## Next Session` bullet outside `### Constraints` is an entry followed by `  - commit: <sha checked against>; files: <comma-separated repo paths or none>`; record each entry's own commit. `### Constraints` bullets quote the user verbatim from `### User Requests` and carry `  - source: <where it was said>`. With nothing to continue, write `- none: <reason>`. `### Related` lists the exact records a later session needs; never point to records you did not check.
 
-When resuming, never delete or edit existing Failed Attempts rows; only append.
+A hook writes `### User Requests` from the session's masked prompts; do not edit it. Pre-commit blocks keys, tokens, emails, IP addresses, and internal hostnames in `progress/` and `progress-logs/`; replace each with `[masked:<category>]`.
 
-When the task completes, remove its entry from `index.md` and move the file to `stale/`.
+To continue earlier work, read only the `## Next Session` of the chosen progress and the pointers under its `### Related` (`/continue-on`); never guess related records. Re-check entries the hooks flag as stale, and ask the user whether a flagged near-duplicate was re-verified or copied. Never edit a progress after its session ends.
+
+## Todo Rule
+
+Directory: `agent-docs/todos/`.
+
+Work items not tied to a session. Required: `#` Title and `## Next Step`. Recommended: `## Goal` and `## Related`. Further sections are allowed. Handoff records from before harness 0.33.0 may live here unchanged. When the item is done or dropped, mark it stale.
 
 # Task Guide
 
 ## User Decision
 
 Never decide unspecified task details silently. Resolve what the project, code, and conversation can answer. For the rest, either ask, or state a default (what you chose, why, and how to change it later) so the user can veto it before it takes effect. Ask instead when the choice is expensive or risky to reverse, or contradicts what the user or project has stated.
+
+## Reporting to the User
+
+Summaries, briefs, and reports must be readable without opening another file. Do not use a label the user cannot resolve from the message itself (e.g., `H3`, `F2`, `O-4`, a finding or obligation id) on its own: state what it refers to in plain words, and add the id in parentheses only when the user needs it to find the item.
+
+## Commit & PR Messages
+
+- A commit message carries a `Request:` line (the user request the work answers) and an `Intent:` line (what the change is meant to achieve). The commit-msg hook warns when either is missing; merge, revert, `fixup!`, `squash!`, and `amend!` commits are exempt.
+- A PR description is written as a five-minute standup introduction for someone who does not know the project: the problem, what changed, why this approach, and how it was checked. A Claude Code hook repeats this after `gh pr create`, and after `gh pr edit` with a body flag.

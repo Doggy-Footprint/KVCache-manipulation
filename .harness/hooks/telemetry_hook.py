@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""PostToolUse / PostToolUseFailure telemetry. Always exits 0 with empty
-stdout: a non-zero exit or stray output here would block or corrupt the
-calling agent's tool loop (U5).
+"""PreToolUse isolation / PostToolUse / PostToolUseFailure telemetry. Always
+exits 0 with empty stdout: a non-zero exit or stray output here would block or
+corrupt the calling agent's tool loop (U5).
 """
 import json
 import sys
@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 import config  # noqa: E402
 import hook_shared  # noqa: E402
+import isolation  # noqa: E402
 import session_metrics  # noqa: E402
 import telemetry  # noqa: E402
 
@@ -18,9 +19,9 @@ REPO_ROOT = config.REPO_ROOT
 SEED_SCRIPT = ".harness/bin/seed.py"
 # REPO_ROOT is symlink-resolved (config.py resolves __file__); tool_input
 # paths from the calling agent usually are not, so resolve() here too or
-# every spec/handoff write silently drops on a symlinked worktree (e.g. macOS /tmp).
+# every spec/progress write silently drops on a symlinked worktree (e.g. macOS /tmp).
 SPECS_DIR = PATHS.specs.resolve()
-HANDOFF_DIR = PATHS.handoff.resolve()
+PROGRESS_DIR = PATHS.progress.resolve()
 
 
 def resolve_path(path_str: str) -> Path:
@@ -77,8 +78,8 @@ def emit_path_write(payload: dict, path_str) -> None:
     path = resolve_path(path_str)
     if path.parent == SPECS_DIR and path.suffix == ".md":
         telemetry.emit(payload, "spec_write", spec=path.stem, version=parse_spec_version(path))
-    elif path.parent == HANDOFF_DIR and path.name not in ("index.md", "stale.md"):
-        telemetry.emit(payload, "handoff_write", file=path.name)
+    elif path.parent == PROGRESS_DIR and path.suffix == ".md":
+        telemetry.emit(payload, "progress_write", file=path.name)
 
 
 def bash_exit_code(tool_response):
@@ -147,7 +148,10 @@ def main() -> int:
     except (json.JSONDecodeError, ValueError):
         return 0
     hook_event = payload.get("hook_event_name")
-    if hook_event == "PostToolUse":
+    if hook_event == "PreToolUse":
+        for candidate in isolation.detect(payload, PATHS.specs, REPO_ROOT):
+            telemetry.emit(payload, "isolation_candidate", **candidate)
+    elif hook_event == "PostToolUse":
         try:
             handle_post_tool_use(payload)
         finally:

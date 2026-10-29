@@ -1,6 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# A merge ends the merged branch's task: progress files it added move to
+# progress-logs/. This runs before the delegation below because exec never returns.
+repo_root="$(git rev-parse --show-toplevel)"
+added="$(git -c core.quotePath=false diff --name-only --diff-filter=A ORIG_HEAD HEAD -- agent-docs/progress/ 2>/dev/null || true)"
+if [ -n "$added" ]; then
+  while IFS= read -r path; do
+    case "$path" in
+      agent-docs/progress/*/*) continue ;;
+      agent-docs/progress/*.md) ;;
+      *) continue ;;
+    esac
+    source_path="$repo_root/$path"
+    destination="agent-docs/progress-logs/${path##*/}"
+    [ -f "$source_path" ] || continue
+    if [ -e "$repo_root/$destination" ]; then
+      echo "post-merge: $path not moved: $destination already exists; rename one of them and move $path yourself" >&2
+      continue
+    fi
+    mkdir -p "$repo_root/agent-docs/progress-logs"
+    mv -n "$source_path" "$repo_root/$destination"
+    echo "post-merge: moved $path to $destination"
+  done <<< "$added"
+fi
+
 common_dir="$(git rev-parse --git-common-dir)"
 local_hook="$common_dir/hooks/post-merge"
 if [ -x "$local_hook" ]; then
