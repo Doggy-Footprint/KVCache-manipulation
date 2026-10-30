@@ -10,3 +10,4 @@ runs/
 .ipynb_checkpoints/
 __pycache__/
 .harness/sessions/progress-*.json
+.harness/sessions/progress-*.d/

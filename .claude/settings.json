@@ -24,6 +24,14 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/telemetry_hook.py\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/progress_hook.py\""
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -82,6 +90,15 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/telemetry_hook.py\""
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/progress_hook.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -113,7 +130,7 @@
         ]
       },
       {
-        "matcher": "Write|Edit|MultiEdit",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
@@ -129,6 +146,15 @@
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/telemetry_hook.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.harness/hooks/progress_hook.py\""
           }
         ]
       }

@@ -348,19 +348,29 @@ def git_branch(repo_root: Path) -> str:
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
-def git_changed_paths(repo_root: Path) -> list[str]:
-    result = _git(repo_root, ["-c", "core.quotePath=false", "status", "--porcelain"])
+def git_worktree_fingerprint(repo_root: Path, excluded_prefix: str) -> str:
+    result = _git(repo_root, ["-c", "core.quotePath=false", "status", "--porcelain", "--untracked-files=all"])
     if result.returncode != 0:
         raise GitUnavailable(result.stderr.strip() or "git status failed")
-    paths = []
-    for line in result.stdout.splitlines():
-        if len(line) < 4:
+    digest = hashlib.sha256(git_head(repo_root).encode("utf-8"))
+    for line in sorted(result.stdout.splitlines()):
+        path = line[3:].split(" -> ", 1)[-1].strip().strip('"')
+        if path.startswith(excluded_prefix):
             continue
-        path = line[3:]
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1]
-        paths.append(path.strip().strip('"'))
-    return paths
+        try:
+            stat = (repo_root / path).stat()
+            signature = f"{stat.st_mtime_ns}:{stat.st_size}"
+        except OSError:
+            signature = "-"
+        digest.update(f"\0{line}\0{signature}".encode("utf-8"))
+    return digest.hexdigest()
+
+
+def git_is_ignored(repo_root: Path, path: str) -> bool:
+    result = _git(repo_root, ["check-ignore", "-q", "--", path])
+    if result.returncode not in (0, 1):
+        raise GitUnavailable(result.stderr.strip() or "git check-ignore failed")
+    return result.returncode == 0
 
 
 def _resolve_commits(repo_root: Path, commits: list[str]) -> dict[str, str | None]:
@@ -627,6 +637,10 @@ def safe_session_id(session_id: str) -> str:
 
 def state_path(repo_root: Path, session_id: str) -> Path:
     return repo_root / ".harness" / "sessions" / f"progress-{safe_session_id(session_id)}.json"
+
+
+def change_dir(repo_root: Path, session_id: str) -> Path:
+    return repo_root / ".harness" / "sessions" / f"progress-{safe_session_id(session_id)}.d"
 
 
 def load_state(path: Path) -> dict | None:

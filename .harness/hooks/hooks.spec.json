@@ -84,8 +84,20 @@
       "command": "python3 \"{root}/.harness/hooks/progress_hook.py\""
     },
     {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "targets": ["claude"],
+      "command": "python3 \"{root}/.harness/hooks/progress_hook.py\""
+    },
+    {
       "event": "PostToolUse",
-      "matcher": "Write|Edit|MultiEdit",
+      "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+      "targets": ["claude"],
+      "command": "python3 \"{root}/.harness/hooks/progress_hook.py\""
+    },
+    {
+      "event": "PostToolUseFailure",
+      "matcher": "Bash",
       "targets": ["claude"],
       "command": "python3 \"{root}/.harness/hooks/progress_hook.py\""
     },
@@ -96,6 +108,11 @@
     },
     {
       "event": "Stop",
+      "targets": ["claude"],
+      "command": "python3 \"{root}/.harness/hooks/progress_hook.py\""
+    },
+    {
+      "event": "SessionEnd",
       "targets": ["claude"],
       "command": "python3 \"{root}/.harness/hooks/progress_hook.py\""
     }

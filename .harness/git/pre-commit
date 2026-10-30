@@ -7,6 +7,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 harness_dir="$repo_root/.harness"
 
 if command -v python3 >/dev/null 2>&1; then
+  python3 "$harness_dir/git/sync_progress.py" || true
   python3 "$harness_dir/git/warn_new_comments.py" --staged || true
   python3 "$harness_dir/git/warn_retrospective.py" || true
   python3 "$harness_dir/git/verify_rules.py"
