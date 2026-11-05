@@ -658,13 +658,22 @@ def write_state(path: Path, state: dict) -> None:
     os.replace(temporary, path)
 
 
+# Claude Code delivers a subagent's hand-back through UserPromptSubmit as an ordinary prompt; the hook
+# payload carries no origin field, so the wrapper text is the only signal that the user did not type it.
+AGENT_MESSAGE_PREFIX = "<agent-message from="
+
+
+def is_agent_message(text: str) -> bool:
+    return text.lstrip().startswith(AGENT_MESSAGE_PREFIX)
+
+
 def state_prompts(state: dict | None) -> list[dict]:
     prompts = state.get("prompts") if state else None
     if not isinstance(prompts, list):
         return []
     return [
         prompt for prompt in prompts
-        if isinstance(prompt, dict) and isinstance(prompt.get("text"), str)
+        if isinstance(prompt, dict) and isinstance(prompt.get("text"), str) and not is_agent_message(prompt["text"])
     ]
 
 

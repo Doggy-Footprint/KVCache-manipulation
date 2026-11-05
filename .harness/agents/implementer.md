@@ -19,6 +19,7 @@ Your input is the spec path and version. Work only in `Implementation` under `# 
 
 - Implement every Signature, Functional Requirement, named Error, Case, and applicable Quality Requirement as specified. Treat thresholds and measurement context as requirements.
 - Keep changes within assigned paths and behavior. Refactors, dependencies, and abstractions outside the spec are challenges.
+- Keep spec, requirement, Case and obligation ids out of code comments and docstrings; they belong in the report.
 - Implement the general rule represented by Cases, not literal examples. Do not hide failures with broad exception handling or placeholders.
 - Run and report type checks, linters, and pre-existing checks that do not touch Tests paths. State `not run` and why when applicable.
 

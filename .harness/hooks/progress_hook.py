@@ -157,7 +157,7 @@ def on_session_start(payload: dict) -> int:
 
 def on_user_prompt_submit(payload: dict) -> int:
     prompt = payload.get("prompt")
-    if not isinstance(prompt, str):
+    if not isinstance(prompt, str) or progress.is_agent_message(prompt):
         return 0
     session_id = session_id_of(payload)
     reason = None
@@ -201,7 +201,7 @@ def target_path(payload: dict) -> Path | None:
     return path
 
 
-def other_live_sessions() -> list[str]:
+def other_live_sessions() -> list[tuple[str, str | None]]:
     running = session_lock.RUNNING_DIR
     if not running.is_dir():
         return []
@@ -213,7 +213,7 @@ def other_live_sessions() -> list[str]:
         except ValueError:
             continue
         if marker.name != mine and session_lock.is_alive(pid):
-            alive.append(marker.name)
+            alive.append((marker.name, session_lock.marker_session(marker)))
     return alive
 
 
@@ -230,12 +230,30 @@ def rotation_refusal(path: Path, session_id: str | None, own_session: str | None
             )
     live = other_live_sessions()
     if live:
-        return (
-            f"harness: rotation refused for {rel(path)}: another harness session is running against this checkout "
-            f"(pid {', '.join(live)}). Parallel sessions on one checkout are not supported; "
-            f"{', '.join(rel(other) for other in others)} was not moved. End the other session or use a separate "
-            f"git worktree, then write {rel(path)} again."
-        )
+        pids = ", ".join(pid for pid, _ in live)
+        if any(owner is None for _, owner in live):
+            return (
+                f"harness: rotation refused for {rel(path)}: another harness session is running against this checkout "
+                f"(pid {pids}). Parallel sessions on one checkout are not supported; "
+                f"{', '.join(rel(other) for other in others)} was not moved. End the other session or use a separate "
+                f"git worktree, then write {rel(path)} again."
+            )
+        for other in others:
+            owner = progress.session_of(other)
+            if not owner:
+                return (
+                    f"harness: rotation refused for {rel(path)}: {rel(other)} has no session, and other harness "
+                    f"sessions are running against this checkout (pid {pids}), so its owner is unknown. "
+                    f"{rel(other)} was not moved. End the other session or use a separate git worktree, "
+                    f"then write {rel(path)} again."
+                )
+            for pid, live_session in live:
+                if live_session == owner:
+                    return (
+                        f"harness: rotation refused for {rel(path)}: {rel(other)} belongs to session {owner}, "
+                        f"which is still running in another process (pid {pid}). {rel(other)} was not moved. "
+                        f"End the other session or use a separate git worktree, then write {rel(path)} again."
+                    )
     for other in others:
         destination = PATHS.progress_logs / other.name
         if destination.exists():

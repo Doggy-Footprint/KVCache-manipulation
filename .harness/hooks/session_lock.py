@@ -31,6 +31,17 @@ def own_marker() -> Path:
     return RUNNING_DIR / str(os.getppid())
 
 
+def marker_session(marker: Path) -> str | None:
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    session_id = data.get("session_id")
+    return session_id if isinstance(session_id, str) and session_id else None
+
+
 def sweep_stale() -> list:
     if not RUNNING_DIR.is_dir():
         return []
@@ -52,7 +63,13 @@ def on_session_start(payload: dict) -> int:
     RUNNING_DIR.mkdir(parents=True, exist_ok=True)
     mine = own_marker()
     others = [m for m in sweep_stale() if m != mine]
-    mine.write_text(payload.get("source", ""), encoding="utf-8")
+    content = {}
+    session_id = payload.get("session_id")
+    if isinstance(session_id, str) and session_id:
+        content["session_id"] = session_id
+    source = payload.get("source")
+    content["source"] = source if isinstance(source, str) else ""
+    mine.write_text(json.dumps(content), encoding="utf-8")
     try:
         session_metrics.flush_orphans(payload.get("session_id"))
     except Exception:

@@ -4,9 +4,21 @@ set -euo pipefail
 # A merge ends the merged branch's task: progress files it added move to
 # progress-logs/. This runs before the delegation below because exec never returns.
 repo_root="$(git rev-parse --show-toplevel)"
-added="$(git -c core.quotePath=false diff --name-only --diff-filter=A ORIG_HEAD HEAD -- agent-docs/progress/ 2>/dev/null || true)"
-if [ -n "$added" ]; then
-  while IFS= read -r path; do
+
+# Deleting the destination is safe only when it is untracked and byte-identical
+# to a committed version of the same progress file, so git history still holds it.
+# This copy is left when a pull fast-forward moved a merged progress and a later
+# merge of the same branch brought a newer version of it back.
+is_committed_copy() {
+  local destination="$1" path="$2" blob
+  git ls-files --error-unmatch -- "$destination" >/dev/null 2>&1 && return 1
+  blob="$(git hash-object -- "$repo_root/$destination")" || return 1
+  git log --format= --raw --no-abbrev -m HEAD -- "$path" | awk -v blob="$blob" '$4 == blob { found = 1 } END { exit !found }'
+}
+
+changed="$(git -c core.quotePath=false diff --name-status --diff-filter=AM ORIG_HEAD HEAD -- agent-docs/progress/ 2>/dev/null || true)"
+if [ -n "$changed" ]; then
+  while IFS=$'\t' read -r status path; do
     case "$path" in
       agent-docs/progress/*/*) continue ;;
       agent-docs/progress/*.md) ;;
@@ -16,13 +28,21 @@ if [ -n "$added" ]; then
     destination="agent-docs/progress-logs/${path##*/}"
     [ -f "$source_path" ] || continue
     if [ -e "$repo_root/$destination" ]; then
-      echo "post-merge: $path not moved: $destination already exists; rename one of them and move $path yourself" >&2
+      if ! is_committed_copy "$destination" "$path"; then
+        if [ "$status" = A ]; then
+          echo "post-merge: $path not moved: $destination already exists; rename one of them and move $path yourself" >&2
+        fi
+        continue
+      fi
+      rm -f "$repo_root/$destination"
+      echo "post-merge: removed $destination, an uncommitted copy of a committed version of $path"
+    elif [ "$status" != A ]; then
       continue
     fi
     mkdir -p "$repo_root/agent-docs/progress-logs"
     mv -n "$source_path" "$repo_root/$destination"
     echo "post-merge: moved $path to $destination"
-  done <<< "$added"
+  done <<< "$changed"
 fi
 
 common_dir="$(git rev-parse --git-common-dir)"
