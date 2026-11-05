@@ -22,15 +22,22 @@ TIMEOUT = 2 * 60 * 60
 HF_MOUNT = "/root/.cache/huggingface"
 RUNS_MOUNT = "/runs"
 
-image = (
+base_image = (
     modal.Image.from_registry("nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12")
     .pip_install("torch==2.14.1", "transformers==5.19.0", "safetensors", "numpy", "scikit-learn",
                  "nvidia-ml-py")
     .pip_install("accelerate")
     .env({"PYTHONPATH": "/root/src", "HF_HOME": HF_MOUNT, "KV_RUNS": RUNS_MOUNT, "TOKENIZERS_PARALLELISM": "false",
           "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True", "HF_XET_HIGH_PERFORMANCE": "1"})
+)
+image = (base_image.add_local_dir(str(ROOT / "src" / "kvmeaning"), "/root/src/kvmeaning")
+         .add_local_dir(str(ROOT / "data"), "/root/data"))
+# Notebooks resolve ../data relative to /root/notebooks, so data stays at /root/data.
+analysis_image = (
+    base_image.pip_install("matplotlib", "ruptures", "umap-learn", "nbconvert", "ipykernel")
     .add_local_dir(str(ROOT / "src" / "kvmeaning"), "/root/src/kvmeaning")
     .add_local_dir(str(ROOT / "data"), "/root/data")
+    .add_local_dir(str(ROOT / "notebooks"), "/root/notebooks")
 )
 
 app = modal.App(APP_NAME, image=image)
@@ -133,6 +140,31 @@ def judge_run(pilot_name: str, run_names: list[str]) -> str:
     return str(out)
 
 
+@app.function(image=analysis_image, cpu=8, memory=48 * 1024, timeout=TIMEOUT,
+              volumes={HF_MOUNT: hf_cache, RUNS_MOUNT: runs_vol})
+def analyze(notebook: str, run_name: str, out_name: str, fig_sub: str, model: str) -> dict[str, bytes]:
+    import subprocess
+
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    runs_vol.reload()
+    out = _run_dir(out_name)
+    fig = out / "figures" / fig_sub
+    fig.mkdir(parents=True, exist_ok=True)
+    nb_out = out / "notebooks"
+    nb_out.mkdir(parents=True, exist_ok=True)
+    name = f"{notebook}__{run_name}.ipynb"
+    env = dict(os.environ, KV_RUN=str(_run_dir(run_name)), KV_FIG=str(fig), KV_MODEL=model, MPLBACKEND="Agg")
+    t = time.time()
+    subprocess.run(["jupyter", "nbconvert", "--to", "notebook", "--execute", "--ExecutePreprocessor.timeout=-1",
+                    f"/root/notebooks/{notebook}.ipynb", "--output-dir", str(nb_out), "--output", name],
+                   cwd="/root/notebooks", env=env, check=True)
+    print(f"{notebook} on {run_name}: {time.time() - t:.0f}s", flush=True)
+    runs_vol.commit()
+    files = {f"figures/{fig_sub}/{p.name}": p.read_bytes() for p in fig.glob("*.png")}
+    files[f"notebooks/{name}"] = (nb_out / name).read_bytes()
+    return files
+
+
 @app.local_entrypoint()
 def pilot(model: str = "Q3.8-27B", limit: int = 0, run_ts: str = "", batch_size: int = 16, gpu: str = GPU,
           only: str = ""):
@@ -180,3 +212,25 @@ def batch_bench(models: str = "Q3-4B,Q3.8-27B", sizes: str = "16,32,64,128,256,5
         (local / f"{ts}-{model}-{gpu}.json").write_text(json.dumps(report, indent=1))
         print(f"{model}: best {report.get('best')}")
     print(f"reports in {local}")
+
+
+@app.local_entrypoint()
+def analysis(run_ts: str, model: str = "Q3-4B", notebooks: str = "exp1_priming,exp1_patching,exp1_patching_prefix,exp2_topic_shift",
+             designs: str = "v1,v2"):
+    jobs = []
+    for nb in notebooks.split(","):
+        for d in (["v1"] if nb.startswith("exp2") else designs.split(",")):
+            sub = "exp2" if nb.startswith("exp2") else ("exp1" if d == "v1" else "exp1_v2")
+            jobs.append((nb, f"{run_ts}-{model}-{d}", f"{run_ts}-{model}-analysis", sub, model))
+    local = ROOT / "runs" / "modal_analysis" / f"{run_ts}-{model}"
+    print(f"{len(jobs)} notebook runs in parallel; outputs -> {local}", flush=True)
+    t0 = time.time()
+    for job, files in zip(jobs, analyze.starmap(jobs, return_exceptions=True)):
+        if isinstance(files, Exception):
+            print(f"[{time.strftime('%H:%M:%S')}] FAILED {job[0]} {job[1]}: {files}", flush=True)
+            continue
+        for rel, data in files.items():
+            (local / rel).parent.mkdir(parents=True, exist_ok=True)
+            (local / rel).write_bytes(data)
+        print(f"[{time.strftime('%H:%M:%S')}] done {job[0]} {job[1]} ({len(files)} files, "
+              f"{(time.time() - t0) / 60:.1f} min)", flush=True)

@@ -3,7 +3,7 @@ session: 41e452e3-7172-4503-8223-16b8708e0447
 before: none
 previous: none
 branch: patching-throughput-local-extract
-commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d
+commit: e9a6cd1be424072a3e785f22cdc42c1f9d48be59
 ---
 
 # H200 batch-size benchmark for KV patching
@@ -46,9 +46,17 @@ commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d
 - Cross-GPU (H100 vs L40S) row differences on identical code and inputs: recovery |Δ| median 0.025–0.035, p99 0.28–1.6, max up to 20 (largest on F2-donor rows of p20, where the KL denominator is small); cont_logprob_delta |Δ| median ≈ 0.38 nats, max 30–51. all_kv medians per donor agree within 0.03 except v2 body H+ (−0.08 vs −0.15) and v2 prefix F2 (0.56 vs 0.68). Within one GPU, results were identical across batch sizes (bench). Implication: do not mix GPU types within one experiment.
   - commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d; files: src/kvmeaning/patching.py
 
+- Modal CPU analysis of pilot `20261105-173626` (`modal run modal_app/kv.py::analysis --run-ts 20261105-173626`; 8 CPU / 48 GiB per notebook): exp1 patching notebooks 5–8 s each, exp1_priming 300 s (v1) / 598 s (v2), exp2 1499 s (CPU bf16 4B forwards). First exp2 attempt failed: `M.load` picked registry key `4B` (same repo, unpinned revision) and the offline cache holds only the pinned snapshot; fixed by passing `KV_MODEL`. Outputs in `runs/modal_analysis/20261105-173626-Q3-4B/` (git-ignored) and Volume `20261105-173626-Q3-4B-analysis/`.
+  - commit: e9a6cd1; files: modal_app/kv.py, notebooks/exp2_topic_shift.ipynb
+- 4B exp1 readings (30 passages): body-token distance 1.1–1.9× floor (v1), 1.5–3.9× (v2, smaller floor); next-token KL above floor in 83–97% (v1) / 100% (v2) of passages; persona/filler probe 0.97 (resid), 0.90 (k_pre), 0.86 (v) at layers 18–20 vs chance 0.33; cross-passage cosine of hint directions 0.65–0.67 below null 0.74. Patching medians: H+, P1, P2 prefix ≈ 0.98–1.00, body ≈ 0; H− body 0.74 / prefix 0.38 (v1), 0.90 / 0.21 (v2); F2 body 0.85 / prefix −0.11 (v1). Cumulative prefix patch reaches 0.5 at layers 18–24 of 36.
+  - commit: e9a6cd1; files: none
+- 4B exp2 readings (11 dialogues, 2 topic pairs): adjacent-distance ratio of the no-shift control S4 (1.32–1.51) is in the same range as shift dialogues (1.12–1.87); post-shift attention mass on the A span is 0.01–0.09 below S4 (n=1 per condition); topic probe trained on separate texts gives A-vs-B AUC 0.98–1.00, P(B) rises at the declaration turn in both S1 and S3 and falls back in S3 after it.
+  - commit: e9a6cd1; files: none
+- Report `reports/20261105-q3-4b-pilot/README.md` (Korean) with figures, executed notebooks, judge/summary/bench JSON copied alongside (6.9 MB). It adds two readings not in earlier chat answers: v2 neutral-content control N0 has next-token KL median 0.100 vs H+ 0.079 / H− 0.062 (hints not separated from a neutral content sentence), and exp2 M2/M4/M3/M5 patterns match the 0.6B report. Uncommitted.
+  - commit: e9a6cd1; files: reports/20261105-q3-4b-pilot/README.md
 ### Next Step
-- User runs `scripts/local_extract_4b.sh` overnight (expected ≈ 1–1.5 h from the 57 s/passage smoke test); check `runs/Q3-4B-local/extract.log`, rerun the script to resume after any interruption. L40S comparison is done (see State); choose one GPU type for all cloud patching of an experiment.
-  - commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d; files: scripts/local_extract_4b.sh, modal_app/kv.py
+- Next work is in todo `agent-docs/todos/f969c985dc88aeb8-exp1-100-passages-local-4b.md`: find a human-written passage dataset (synthesize only if none fits), plan disk use (100 passages × 2 designs at full resolution ≈ 164 GB vs 91 GB free), and run Qwen3-4B locally. The Modal CPU analysis path (`modal_app/kv.py::analysis`) and the pilot results are recorded in `reports/20261105-q3-4b-pilot/README.md`.
+  - commit: e9a6cd1; files: agent-docs/todos/f969c985dc88aeb8-exp1-100-passages-local-4b.md, reports/20261105-q3-4b-pilot/README.md
 ### Constraints
 - "\"로컬 실험 금지\" 규칙을 \"4B 추출만 로컬 허용\"으로 좁히는 것 허용"
   - source: user prompt, this session
@@ -57,6 +65,14 @@ commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d
 - "이번 파일럿이 제대로 결과가 나오면 L40S 파일럿 해보자. A100, A10G 가격 맞아."
   - source: user prompt, this session
 - "cold start 비용이 H100에서 더 크게 나타날 테니까 그거 고려해서 비용 말고 처리율로 따져줘"
+  - source: user prompt, this session
+- "커밋하고, 지문 100개는 합성할거야? 사용할 수 있는 사람 제작 데이터 셋이 있으면 그걸 우선하고, 4B는 로컬에서 돌리자. -> 새로운 세션에서 진행하게 todo로 해줘."
+  - source: user prompt, this session
+- "실험 기록을 잘 정리해서 reports/에 정리해줘."
+  - source: user prompt, this session
+- "modal CPU 대여해서 처리하자.GPU 안 붙이면 가격 얼마 안 하니까"
+  - source: user prompt, this session
+- "4B만 먼저 해보자"
   - source: user prompt, this session
 - "H200으로 한 번에 많은 배치를 돌리는 식으로 가자. 낮춰봤자 느려져서 가격이 싸지지는 않더라."
   - source: user prompt, this session
@@ -68,8 +84,10 @@ commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d
   - commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d; files: tests/tiny/test_bench.py
 
 ### Dead Ends
-- none: no failed attempt yet.
-  - commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d; files: none
+- L40S for patching: ≈2× H100 work time per passage (≈125 vs ≈244 rows/s) at about the same cost; cross-GPU rows differ (recovery |Δ| median ≈0.03, max 20). Run all patching of one experiment on one GPU type.
+  - commit: e9a6cd1; files: modal_app/kv.py, src/kvmeaning/patching.py
+- Lowering GPU batch size does not reduce cost: wall time per passage is flat or worse below B=32 (H200 bench).
+  - commit: e9a6cd1; files: src/kvmeaning/bench.py
 
 ### Related
 - `agent-docs/todos/stale/8ccff327d9aa2138-modal-multimodel-hybrid-limit.md` (Modal setup open questions: GPU load path and Gated DeltaNet fallback unverified).
@@ -272,3 +290,75 @@ commit: 76557b39a89963cc6e50d7a61d9a7ff59bca577d
 #### 31 — 2026-11-05T14:48:28Z
 
 > 커밋. 로컬 추출하는데 얼마나 걸려?
+
+#### 32 — 2026-11-05T14:49:46Z
+
+> GPU 작업은 H100에서 30개 했는데, 얼마나 남았어?
+
+#### 33 — 2026-11-05T14:50:31Z
+
+> 그럼 다시 하는 이유가 별로 없는 것 같은데???
+
+#### 34 — 2026-11-05T14:52:33Z
+
+> modal CPU 대여해서 처리하자.GPU 안 붙이면 가격 얼마 안 하니까
+
+#### 35 — 2026-11-05T14:54:15Z
+
+> 다운로드 왜 받는데
+
+#### 36 — 2026-11-05T15:04:13Z
+
+> 뭘 다운로드해
+
+#### 37 — 2026-11-05T15:05:47Z
+
+> <task-notification>
+> <task-id>bp1zs941y</task-id>
+> <tool-use-id>toolu_01Y6TC3RNaEaYWJdCeFxsE6V</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-toy-projects-understand-KVCache/41e452e3-7172-4503-8223-16b8708e0447/tasks/bp1zs941y.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Run analysis notebooks on Modal CPU containers" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 38 — 2026-11-05T15:06:07Z
+
+> <task-notification>
+> <task-id>bg416zpvj</task-id>
+> <tool-use-id>toolu_011GwthyYV9aUN8jY3TCeWHZ</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-toy-projects-understand-KVCache/41e452e3-7172-4503-8223-16b8708e0447/tasks/bg416zpvj.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Wait for all notebook runs to finish" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 39 — 2026-11-05T15:08:18Z
+
+> 결과 분석해줘
+
+#### 40 — 2026-11-05T15:10:08Z
+
+> 아 그럼 완료 되고 이 실험이 한정된 예산에서 할 가치가 있을지 분석해줘
+
+#### 41 — 2026-11-05T15:31:34Z
+
+> <task-notification>
+> <task-id>bhavm0fl8</task-id>
+> <tool-use-id>toolu_016BjwTo5tTXNFPcdSYF6Gxm</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-toy-projects-understand-KVCache/41e452e3-7172-4503-8223-16b8708e0447/tasks/bhavm0fl8.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Pass model key explicitly and rerun exp2 notebook on Modal CPU" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 42 — 2026-11-05T15:42:56Z
+
+> 실험 기록을 잘 정리해서 reports/에 정리해줘.
+
+#### 43 — 2026-11-05T15:42:59Z
+
+> 실험 기록을 잘 정리해서 reports/에 정리해줘.
+
+#### 44 — 2026-11-05T15:51:18Z
+
+> 커밋하고, 지문 100개는 합성할거야? 사용할 수 있는 사람 제작 데이터 셋이 있으면 그걸 우선하고, 4B는 로컬에서 돌리자. -> 새로운 세션에서 진행하게 todo로 해줘.
+> 
+> 아, 100개 하면 필요한 디스크 용량이 더 커져?
