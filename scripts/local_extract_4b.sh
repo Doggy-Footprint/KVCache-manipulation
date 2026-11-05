@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local Q3-4B extraction (exp1 v1, exp1 v2, exp2) on MPS. Rerunning resumes: completed passages are skipped.
-# Local runs are allowed for 4B extraction only; patching stays on Modal.
+# Patching can also run locally on MPS; for the 100-passage BBC run use scripts/local_exp1.sh.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -1,0 +1,15 @@
+{
+ "prefixes": {
+  "H+": "The following passage has the headline \"{headline}\".",
+  "H-": "The following passage has the headline \"{wrong_headline}\".",
+  "C+": "The following passage is about {label}.",
+  "C-": "The following passage is about {wrong_label}.",
+  "P1": "You are a skeptical defense lawyer. Read the following passage carefully and look for weaknesses, gaps, and unsupported claims in every statement.",
+  "P2": "You are an empathetic counselor. Read the following passage carefully and pay attention to how each person involved might be feeling and what they need."
+ },
+ "fillers": {
+  "F1": "The weather today is mild with a light breeze. Clouds drift slowly across the sky, and the temperature is expected to stay about the same through the evening. Tomorrow should be similar, with perhaps a little more sun in the afternoon and calm winds overnight. Nothing unusual is forecast for the rest of the week.",
+  "F2": "The library opens at nine in the morning and closes at six in the evening on weekdays. On weekends it opens an hour later. Books can be borrowed for three weeks and renewed once. The reading room on the second floor is quiet, and there are several tables near the windows where visitors can sit."
+ },
+ "pad_text": "Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below. Please read the text below."
+}

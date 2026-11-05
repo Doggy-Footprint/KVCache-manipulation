@@ -5,6 +5,7 @@ from pathlib import Path
 
 import torch
 
+from . import designs as D
 from . import model as M
 from .attention_mass import span_mass
 from .hooks import capture
@@ -14,7 +15,7 @@ from .store import save
 
 DATA = Path(__file__).resolve().parents[2] / "data"
 REPRS = ("v", "k_pre", "k_post", "resid")
-DESIGN_FILES = {"v1": "exp1_prefixes.json", "v2": "exp1_prefixes_v2.json"}
+DESIGN_FILES = {n: d.prefixes for n, d in D.DESIGNS.items()}
 
 
 def _jsonl(p: Path) -> list[dict]:
@@ -51,13 +52,13 @@ def _done(path: Path) -> bool:
     return path.with_suffix(".safetensors").exists() and path.with_suffix(".json").exists()
 
 
-def run_exp1(model, tok, size, out, limit, layers, design="v1", on_passage=None):
-    cfg = json.loads((DATA / DESIGN_FILES[design]).read_text())
-    passages = _jsonl(DATA / "exp1_passages.jsonl")[:limit]
+def run_exp1(model, tok, size, out, limit, layers, design="v1", on_passage=None, only=None, max_batch=None):
+    cfg, passages = D.load(DATA, design)
+    passages = passages[:limit] if only is None else [p for p in passages if p["id"] in set(only)]
     prog = Progress(f"exp1 {design}", len(passages))
     for p in passages:
         prefixes = {c: s.format(**p) for c, s in cfg["prefixes"].items()}
-        pids = exp1_prefix_ids(tok, prefixes, cfg["fillers"], cfg["pad_text"], design)
+        pids = exp1_prefix_ids(tok, prefixes, cfg["fillers"], cfg["pad_text"], D.get(design).layout)
         if all(_done(out / "exp1" / p["id"] / c) for c in pids):
             prog.step(p["id"], skipped=True)
             continue
@@ -66,7 +67,8 @@ def run_exp1(model, tok, size, out, limit, layers, design="v1", on_passage=None)
         by_len: dict[int, list[str]] = {}
         for c, e in encs.items():
             by_len.setdefault(len(e.ids), []).append(c)
-        for conds in by_len.values():
+        groups = [g[i:i + (max_batch or len(g))] for g in by_len.values() for i in range(0, len(g), max_batch or len(g))]
+        for conds in groups:
             pos = {"body_last": encs[conds[0]].spans["body"][1] - 1}
             caps = capture(model, torch.tensor([encs[c].ids for c in conds]), pos)
             caps = caps if isinstance(caps, list) else [caps]
@@ -114,7 +116,7 @@ def main():
 
     model, tok = M.load(a.model, device=a.device)
     layers = list(range(0, model.config.get_text_config().num_hidden_layers, a.layer_stride))
-    out = a.run_dir or a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}{'-v2' if a.design == 'v2' else ''}"
+    out = a.run_dir or a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}{'' if a.design == 'v1' else '-' + a.design}"
     if a.exp == 1:
         run_exp1(model, tok, a.model, out, a.limit, layers, a.design)
     else:

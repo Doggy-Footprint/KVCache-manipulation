@@ -9,17 +9,18 @@ from pathlib import Path
 import torch
 from transformers import DynamicCache
 
+from . import designs as D
 from . import model as M
 from .batch import stack_caches
 from .progress import Progress
 from .spans import assert_aligned, exp1_encode, exp1_prefix_ids
 
 DATA = Path(__file__).resolve().parents[2] / "data"
-DESIGN_FILES = {"v1": "exp1_prefixes.json", "v2": "exp1_prefixes_v2.json"}
+DESIGN_FILES = {n: d.prefixes for n, d in D.DESIGNS.items()}
 PATCH_MODES = ("kv", "state", "both")
 BATCH_SIZE = 16
 READOUT_SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
-DONORS = ("H+", "H-", "P1", "P2", "F2")
+DONORS = D.DONORS
 CONT_LEN = 16
 _KINDS = ("k", "v")
 # "prefix" patches [0, body start): the template head is identical across conditions, the delimiter is prefix-dependent.
@@ -177,8 +178,16 @@ def greedy_batch(model, caches: list, suffix_ids: list[int], n: int = CONT_LEN) 
     return first, torch.stack(outs, 1).tolist()
 
 
+# Device types without float64 support; recovery is computed on the host there.
+NO_F64 = {"mps"}
+
+
+def _f64(x: torch.Tensor) -> torch.Tensor:
+    return x.cpu().double() if x.device.type in NO_F64 else x.double()
+
+
 def recovery_batch(donor: torch.Tensor, recipient: torch.Tensor, patched: torch.Tensor) -> torch.Tensor:
-    d, r, p = (torch.log_softmax(x.double(), dim=-1) for x in (donor, recipient, patched))
+    d, r, p = (torch.log_softmax(_f64(x), dim=-1) for x in (donor, recipient, patched))
     pd = d.exp()
     den, num = (pd * (d - r)).sum(-1), (pd * (d - p)).sum(-1)
     return torch.where(den == 0, torch.full_like(den, float("nan")), 1 - num / den)
@@ -223,10 +232,11 @@ def _chunks(xs: list, n: int):
 
 
 def run(model, tok, out_dir: Path, limit: int | None, region: str = "body", heads: bool = True,
-        design: str = "v1", batch_size: int = BATCH_SIZE, modes: Iterable[str] | None = None, on_passage=None):
-    cfg = json.loads((DATA / DESIGN_FILES[design]).read_text())
-    every = [json.loads(l) for l in (DATA / "exp1_passages.jsonl").read_text().splitlines() if l.strip()]
-    passages = every[:limit]
+        design: str = "v1", batch_size: int = BATCH_SIZE, modes: Iterable[str] | None = None, on_passage=None,
+        only: Iterable[str] | None = None):
+    cfg, every = D.load(DATA, design)
+    layout, donors = D.get(design).layout, D.get(design).donors
+    passages = every[:limit] if only is None else [p for p in every if p["id"] in set(only)]
     suffix = tok(READOUT_SUFFIX, add_special_tokens=False)["input_ids"]
     if region not in REGIONS:
         raise ValueError(f"region must be one of {REGIONS}")
@@ -240,10 +250,16 @@ def run(model, tok, out_dir: Path, limit: int | None, region: str = "body", head
     if not hybrid and set(modes) - {"kv"}:
         raise ValueError("state/both patching requires a hybrid model")
     prompts, spans = {}, {}
+    pool = [e["id"] for e in every]
+    need = {p["id"] for p in passages}
+    if region == "body":
+        need |= {q for p in passages for q in shuffle_sources(p["id"], pool, SHUFFLE_K, SHUFFLE_SEED)}
     for p in every:
+        if p["id"] not in need:
+            continue
         prefixes = {c: s.format(**p) for c, s in cfg["prefixes"].items()}
-        pids = exp1_prefix_ids(tok, prefixes, cfg["fillers"], cfg["pad_text"], design)
-        encs = {c: exp1_encode(tok, pids[c], p["text"]) for c in (*DONORS, "F1")}
+        pids = exp1_prefix_ids(tok, prefixes, cfg["fillers"], cfg["pad_text"], layout)
+        encs = {c: exp1_encode(tok, pids[c], p["text"]) for c in (*donors, "F1")}
         assert_aligned(encs)
         spans[p["id"]] = encs["F1"].spans["body"]
         assert all(e.spans["body"] == spans[p["id"]] for e in encs.values())
@@ -278,20 +294,20 @@ def run(model, tok, out_dir: Path, limit: int | None, region: str = "body", head
                         caches[recipient], donor_cache() if donor_cache else caches[donor], rspan, l_, h_, k_, state=st)
                     tasks.append((donor, recipient, cname, target, make, extra or {}))
 
-            for donor in DONORS:
+            for donor in donors:
                 for name, ls, hs, ks in _configs(n_layers, n_heads, heads, kvl):
                     add(donor, "F1", donor, span, name, ls, hs, ks, singleton=name == "all_kv")
             add("F1", "P1", "F1", span, "reverse_all_kv", kvl)
 
             if region == "prefix":
-                for donor in DONORS:
+                for donor in donors:
                     add(donor, "F1", donor, (0, body[1]), "full_all_kv", kvl)
             else:
                 if hybrid:
-                    for donor in DONORS:
+                    for donor in donors:
                         add(donor, "F1", donor, (0, body[1]), "full_all_kv", kvl, only=("both",))
                 # Pool is the whole passage file, not `passages`, so sources do not change with `limit`.
-                for q in shuffle_sources(pid, [e["id"] for e in every], SHUFFLE_K, SHUFFLE_SEED):
+                for q in shuffle_sources(pid, pool, SHUFFLE_K, SHUFFLE_SEED):
                     cut = min(span[1], spans[q][1])
                     donor_ids = prompts[q]["P1"][:cut] + prompts[pid]["P1"][cut:]
                     add("P1_shuffled", "F1", "P1", (span[0], cut), "shuffled_all_kv", kvl,
@@ -345,7 +361,7 @@ def main():
 
     t0 = time.time()
     model, tok = M.load(a.model, device=a.device)
-    run_dir = a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}{'-v2' if a.design == 'v2' else ''}"
+    run_dir = a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}{'' if a.design == 'v1' else '-' + a.design}"
     run(model, tok, run_dir / ("exp1_patch" if a.region == "body" else f"exp1_patch_{a.region}"), a.limit, a.region,
         not a.no_heads, a.design, a.batch_size)
     print(f"elapsed {(time.time() - t0) / 60:.1f} min")
