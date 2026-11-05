@@ -11,6 +11,7 @@ from transformers import DynamicCache
 
 from . import model as M
 from .batch import stack_caches
+from .progress import Progress
 from .spans import assert_aligned, exp1_encode, exp1_prefix_ids
 
 DATA = Path(__file__).resolve().parents[2] / "data"
@@ -48,9 +49,24 @@ def _state_tensors(layer):
     return [(d, s) for d in (layer.conv_states, layer.recurrent_states) for s in d if d[s] is not None]
 
 
+def _to_device(rows, device) -> torch.Tensor:
+    # A pageable host-to-device copy waits for queued GPU work; pinned + non_blocking lets the host run ahead.
+    t = torch.tensor(rows)
+    if torch.device(device).type != "cuda":
+        return t.to(device)
+    return t.pin_memory().to(device, non_blocking=True)
+
+
+def _head_index(heads: list[int]):
+    # A list index is copied to the GPU synchronously on every use; a slice needs no copy.
+    if heads == list(range(heads[0], heads[-1] + 1)):
+        return slice(heads[0], heads[-1] + 1)
+    return heads
+
+
 @torch.no_grad()
 def prefill(model, ids: list[int]) -> DynamicCache:
-    out = model(input_ids=torch.tensor([ids], device=model.device), use_cache=True)
+    out = model(input_ids=_to_device([ids], model.device), use_cache=True)
     return out.past_key_values
 
 
@@ -91,6 +107,8 @@ def mix_cache(recipient, donor, span: tuple[int, int], layers: Iterable[int], he
             raise ValueError(f"head outside [0, {n_heads})")
 
     out = copy.deepcopy(recipient)
+    if kv_layers:
+        heads = _head_index(heads)
     for l in kv_layers:
         ok, ov = _kv(out, l)
         dk, dv = _kv(donor, l)
@@ -136,36 +154,38 @@ def greedy_continuation(model, cache, suffix_ids: list[int], n: int = CONT_LEN) 
 
 
 @torch.no_grad()
-def eval_batch(model, caches: list, suffix_ids: list[int], conts: list[list[int]]) -> tuple[torch.Tensor, list[float]]:
+def eval_batch(model, caches: list, suffix_ids: list[int], conts: list[list[int]]) -> tuple[torch.Tensor, torch.Tensor]:
     stacked = stack_caches(caches)
-    ids = torch.tensor([suffix_ids + c[:-1] for c in conts], device=model.device)
-    logits = model(input_ids=ids, past_key_values=stacked, use_cache=True).logits[:, len(suffix_ids) - 1:].float().cpu()
+    ids = _to_device([suffix_ids + c[:-1] for c in conts], model.device)
+    logits = model(input_ids=ids, past_key_values=stacked, use_cache=True).logits[:, len(suffix_ids) - 1:].float()
     lp = torch.log_softmax(logits, dim=-1)
-    gathered = lp.gather(-1, torch.tensor(conts)[..., None])[..., 0].sum(-1)
-    return logits[:, 0], gathered.tolist()
+    gathered = lp.gather(-1, _to_device(conts, lp.device)[..., None])[..., 0].sum(-1)
+    return logits[:, 0], gathered
 
 
 @torch.no_grad()
 def greedy_batch(model, caches: list, suffix_ids: list[int], n: int = CONT_LEN) -> tuple[torch.Tensor, list[list[int]]]:
     c = stack_caches(caches)
-    ids = torch.tensor([suffix_ids] * len(caches), device=model.device)
+    ids = _to_device([suffix_ids] * len(caches), model.device)
     outs, first = [], None
     for _ in range(n):
         logits = model(input_ids=ids, past_key_values=c, use_cache=True).logits[:, -1]
         if first is None:
-            first = logits.float().cpu()
+            first = logits.float()
         ids = logits.argmax(-1, keepdim=True)
-        outs.append(ids[:, 0].tolist())
-    return first, [list(col) for col in zip(*outs)]
+        outs.append(ids[:, 0])
+    return first, torch.stack(outs, 1).tolist()
+
+
+def recovery_batch(donor: torch.Tensor, recipient: torch.Tensor, patched: torch.Tensor) -> torch.Tensor:
+    d, r, p = (torch.log_softmax(x.double(), dim=-1) for x in (donor, recipient, patched))
+    pd = d.exp()
+    den, num = (pd * (d - r)).sum(-1), (pd * (d - p)).sum(-1)
+    return torch.where(den == 0, torch.full_like(den, float("nan")), 1 - num / den)
 
 
 def recovery(donor: torch.Tensor, recipient: torch.Tensor, patched: torch.Tensor) -> float:
-    d, r, p = (torch.log_softmax(x.double(), dim=-1) for x in (donor, recipient, patched))
-    kl = lambda q: (d.exp() * (d - q)).sum().item()
-    den = kl(r)
-    if den == 0:
-        return float("nan")
-    return 1 - kl(p) / den
+    return recovery_batch(donor[None], recipient[None], patched[None])[0].item()
 
 
 def _configs(n_layers: int, n_heads: int, heads: bool = True, layers: list[int] | None = None):
@@ -235,11 +255,12 @@ def run(model, tok, out_dir: Path, limit: int | None, region: str = "body", head
     if results.exists():
         keep = [l for l in results.read_text().splitlines() if l.strip() and json.loads(l)["passage"] in done]
         results.write_text("".join(l + "\n" for l in keep))
+    prog = Progress(f"patch {design}/{region} B={batch_size}", len(passages))
     with open(results, "a") as f:
         for pi, p in enumerate(passages):
             pid, body = p["id"], spans[p["id"]]
             if pid in done:
-                print(f"patch {pid} skip (complete)", flush=True)
+                prog.step(pid, skipped=True)
                 continue
             span = body if region == "body" else (0, body[0])
             names = list(prompts[pid])
@@ -278,25 +299,30 @@ def run(model, tok, out_dir: Path, limit: int | None, region: str = "body", head
                         extra={"shuffle_source": q})
 
             pairs = sorted({(t[1], t[3]) for t in tasks})
-            base_lp = {}
-            for chunk in _chunks(pairs, batch_size):
-                _, lps = eval_batch(model, [caches[r] for r, _ in chunk], suffix, [conts[t] for _, t in chunk])
-                base_lp.update(zip(chunk, lps))
-
-            rows = []
+            base_parts = [eval_batch(model, [caches[r] for r, _ in chunk], suffix, [conts[t] for _, t in chunk])[1]
+                          for chunk in _chunks(pairs, batch_size)]
+            rec_parts, lp_parts = [], []
             for chunk in _chunks(tasks, batch_size):
                 read, lps = eval_batch(model, [t[4]() for t in chunk], suffix, [conts[t[3]] for t in chunk])
-                for (donor, recipient, cname, target, _, extra), rd, lp in zip(chunk, read, lps):
-                    rows.append(dict(
-                        passage=pid, donor=donor, recipient=recipient, config=cname,
-                        recovery=recovery(logits[target], logits[recipient], rd),
-                        cont_logprob_delta=lp - base_lp[(recipient, target)], **extra,
-                    ))
+                rec_parts.append(recovery_batch(torch.stack([logits[t[3]] for t in chunk]),
+                                                torch.stack([logits[t[1]] for t in chunk]), read))
+                lp_parts.append(lps)
+            # Results are read back once per passage so the host keeps queueing chunks while the GPU computes.
+            base_lp = dict(zip(pairs, torch.cat(base_parts).tolist()))
+            recs, lps = torch.cat(rec_parts).tolist(), torch.cat(lp_parts).tolist()
+
+            rows = []
+            for (donor, recipient, cname, target, _, extra), rec, lp in zip(tasks, recs, lps):
+                rows.append(dict(
+                    passage=pid, donor=donor, recipient=recipient, config=cname,
+                    recovery=rec,
+                    cont_logprob_delta=lp - base_lp[(recipient, target)], **extra,
+                ))
             f.write("".join(json.dumps(r) + "\n" for r in rows))
             f.flush()
             with open(done_file, "a") as df:
                 df.write(pid + "\n")
-            print(f"patch {pid} rows={len(rows)} t={time.time() - t0:.0f}s", flush=True)
+            prog.step(pid, f"rows={len(rows)}")
             if on_passage:
                 on_passage(pid)
 

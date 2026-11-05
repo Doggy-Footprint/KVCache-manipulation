@@ -8,6 +8,7 @@ import torch
 from . import model as M
 from .attention_mass import span_mass
 from .hooks import capture
+from .progress import Progress
 from .spans import assert_aligned, exp1_encode, exp1_prefix_ids, exp2_encode
 from .store import save
 
@@ -52,11 +53,13 @@ def _done(path: Path) -> bool:
 
 def run_exp1(model, tok, size, out, limit, layers, design="v1", on_passage=None):
     cfg = json.loads((DATA / DESIGN_FILES[design]).read_text())
-    for p in _jsonl(DATA / "exp1_passages.jsonl")[:limit]:
+    passages = _jsonl(DATA / "exp1_passages.jsonl")[:limit]
+    prog = Progress(f"exp1 {design}", len(passages))
+    for p in passages:
         prefixes = {c: s.format(**p) for c, s in cfg["prefixes"].items()}
         pids = exp1_prefix_ids(tok, prefixes, cfg["fillers"], cfg["pad_text"], design)
         if all(_done(out / "exp1" / p["id"] / c) for c in pids):
-            print(f"exp1 {p['id']} skip (complete)")
+            prog.step(p["id"], skipped=True)
             continue
         encs = {c: exp1_encode(tok, ids, p["text"]) for c, ids in pids.items()}
         assert_aligned(encs)
@@ -72,15 +75,17 @@ def run_exp1(model, tok, size, out, limit, layers, design="v1", on_passage=None)
                 meta = dict(exp=1, model=M.MODELS[size].repo, passage=p["id"], condition=c, ids=e.ids, spans=e.spans,
                             layers=layers, kv_layers=[cap.kv_layers[j] for j in _kv_sel(cap, layers)], design=design)
                 save(out / "exp1" / p["id"] / c, _tensors(cap, {"prefix": e.spans["prefix"]}, layers), meta)
-                print(f"exp1 {p['id']} {c} T={len(e.ids)}")
+        prog.step(p["id"], f"conds={len(encs)} T={sorted({len(e.ids) for e in encs.values()})}")
         if on_passage:
             on_passage(p["id"])
 
 
 def run_exp2(model, tok, size, out, limit, layers, on_passage=None):
-    for d in _jsonl(DATA / "exp2_dialogues.jsonl")[:limit]:
+    dialogues = _jsonl(DATA / "exp2_dialogues.jsonl")[:limit]
+    prog = Progress("exp2", len(dialogues))
+    for d in dialogues:
         if _done(out / "exp2" / d["id"]):
-            print(f"exp2 {d['id']} skip (complete)")
+            prog.step(d["id"], skipped=True)
             continue
         e = exp2_encode(tok, d["turns"])
         gt = {k: (e.spans[f"turn_{d[k]}"][0] if d[k] is not None else None) for k in ("declaration_turn", "b_content_turn")}
@@ -90,7 +95,7 @@ def run_exp2(model, tok, size, out, limit, layers, on_passage=None):
                     spans=e.spans, ground_truth_tokens=gt, layers=layers,
                     kv_layers=[cap.kv_layers[j] for j in _kv_sel(cap, layers)])
         save(out / "exp2" / d["id"], _tensors(cap, mass_spans, layers), meta)
-        print(f"exp2 {d['id']} T={len(e.ids)}")
+        prog.step(d["id"], f"T={len(e.ids)}")
         if on_passage:
             on_passage(d["id"])
 
@@ -104,11 +109,12 @@ def main():
     ap.add_argument("--out", type=Path, default=Path("runs"))
     ap.add_argument("--design", default="v1", choices=list(DESIGN_FILES))
     ap.add_argument("--device", default=None)
+    ap.add_argument("--run-dir", type=Path, default=None, help="fixed output dir; rerunning skips completed items")
     a = ap.parse_args()
 
     model, tok = M.load(a.model, device=a.device)
     layers = list(range(0, model.config.get_text_config().num_hidden_layers, a.layer_stride))
-    out = a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}{'-v2' if a.design == 'v2' else ''}"
+    out = a.run_dir or a.out / f"{time.strftime('%Y%m%d-%H%M%S')}-{a.model}{'-v2' if a.design == 'v2' else ''}"
     if a.exp == 1:
         run_exp1(model, tok, a.model, out, a.limit, layers, a.design)
     else:

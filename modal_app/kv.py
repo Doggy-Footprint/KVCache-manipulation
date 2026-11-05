@@ -14,15 +14,21 @@ import modal
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_NAME = "kvmeaning"
-GPU = "H200"
+GPU = "H100"
+# Modal list prices per GPU-hour as of 2026-11 (aggregator figures, A100/A10G confirmed by the user); only used for
+# cost projections in bench output.
+GPU_USD_PER_HOUR = {"H200": 4.54, "H100": 3.95, "A100-80GB": 2.50, "L40S": 1.95, "A10G": 1.10, "L4": 0.80}
 TIMEOUT = 2 * 60 * 60
 HF_MOUNT = "/root/.cache/huggingface"
 RUNS_MOUNT = "/runs"
 
 image = (
     modal.Image.from_registry("nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12")
-    .pip_install("torch==2.14.1", "transformers==5.19.0", "safetensors", "numpy", "scikit-learn")
-    .env({"PYTHONPATH": "/root/src", "HF_HOME": HF_MOUNT, "KV_RUNS": RUNS_MOUNT, "TOKENIZERS_PARALLELISM": "false"})
+    .pip_install("torch==2.14.1", "transformers==5.19.0", "safetensors", "numpy", "scikit-learn",
+                 "nvidia-ml-py")
+    .pip_install("accelerate")
+    .env({"PYTHONPATH": "/root/src", "HF_HOME": HF_MOUNT, "KV_RUNS": RUNS_MOUNT, "TOKENIZERS_PARALLELISM": "false",
+          "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True", "HF_XET_HIGH_PERFORMANCE": "1"})
     .add_local_dir(str(ROOT / "src" / "kvmeaning"), "/root/src/kvmeaning")
     .add_local_dir(str(ROOT / "data"), "/root/data")
 )
@@ -87,6 +93,15 @@ def patch(model: str, design: str, region: str, run_name: str, limit: int | None
     return str(out)
 
 
+@app.function(**GPU_KW)
+def bench(model: str, sizes: str, region: str, run_name: str, passages: int = 1, gpu: str = GPU) -> dict:
+    from kvmeaning import bench as BM
+
+    m, tok = _load(model)
+    return BM.bench(m, tok, _run_dir(run_name), [int(x) for x in sizes.split(",")], region=region, passages=passages,
+                    usd_per_hour=GPU_USD_PER_HOUR.get(gpu), on_step=runs_vol.commit)
+
+
 @app.function(cpu=4, memory=32 * 1024, timeout=TIMEOUT, volumes={RUNS_MOUNT: runs_vol})
 def summarize(run_name: str) -> str:
     from kvmeaning import summary
@@ -119,26 +134,49 @@ def judge_run(pilot_name: str, run_names: list[str]) -> str:
 
 
 @app.local_entrypoint()
-def pilot(model: str = "Q3.8-27B", limit: int = 0, run_ts: str = "", batch_size: int = 16):
+def pilot(model: str = "Q3.8-27B", limit: int = 0, run_ts: str = "", batch_size: int = 16, gpu: str = GPU,
+          only: str = ""):
     ts = run_ts or time.strftime("%Y%m%d-%H%M%S")
+    extract_fn, patch_fn = (f if gpu == GPU else f.with_options(gpu=gpu) for f in (extract, patch))
     lim = limit or None
     names = {d: f"{ts}-{model}-{d}" for d in ("v1", "v2")}
     pilot_name = f"{ts}-{model}-pilot"
+    print(f"run timestamp {ts} (resume with --run-ts {ts}); model={model} gpu={gpu} batch_size={batch_size}", flush=True)
 
-    download.remote(model)
-    for d, name in names.items():
-        extract.remote(model, 1, d, name, lim)
-    for d, name in names.items():
-        for region in ("body", "prefix"):
-            patch.remote(model, d, region, name, lim, batch_size)
-    extract.remote(model, 2, "v1", names["v1"], lim)
-    for name in names.values():
-        summarize.remote(name)
-    judge_run.remote(pilot_name, list(names.values()))
+    stages = [("download", lambda: download.remote(model))]
+    stages += [(f"extract exp1 {d}", lambda d=d, n=n: extract_fn.remote(model, 1, d, n, lim)) for d, n in names.items()]
+    stages += [(f"patch {d}/{r}", lambda d=d, n=n, r=r: patch_fn.remote(model, d, r, n, lim, batch_size))
+               for d, n in names.items() for r in ("body", "prefix")]
+    stages += [("extract exp2", lambda: extract_fn.remote(model, 2, "v1", names["v1"], lim))]
+    stages += [(f"summarize {n}", lambda n=n: summarize.remote(n)) for n in names.values()]
+    stages += [("judge", lambda: judge_run.remote(pilot_name, list(names.values())))]
+    if only:
+        stages = [st for st in stages if st[0].startswith(tuple(only.split(",")))]
+    t0 = time.time()
+    for i, (label, fn) in enumerate(stages, 1):
+        t = time.time()
+        print(f"[{time.strftime('%H:%M:%S')}] stage {i}/{len(stages)} {label} start", flush=True)
+        fn()
+        print(f"[{time.strftime('%H:%M:%S')}] stage {i}/{len(stages)} {label} done in {time.time() - t:.0f}s"
+              f" (total {(time.time() - t0) / 60:.1f} min)", flush=True)
 
-    print(f"run timestamp {ts} (resume with --run-ts {ts})")
     fetch = [f"{names[d]}/summary.json" for d in names]
     fetch += [f"{names[d]}/exp1_patch{s}/results.jsonl" for d in names for s in ("", "_prefix")]
     fetch += [f"{pilot_name}/judge.json"]
     for p in fetch:
         print(f"modal volume get kvmeaning-runs /{p} ./runs_modal/{p}")
+
+
+@app.local_entrypoint()
+def batch_bench(models: str = "Q3-4B,Q3.8-27B", sizes: str = "16,32,64,128,256,512", region: str = "body",
+                passages: int = 1, run_ts: str = "", gpu: str = GPU):
+    ts = run_ts or time.strftime("%Y%m%d-%H%M%S")
+    local = ROOT / "runs" / "modal_bench"
+    local.mkdir(parents=True, exist_ok=True)
+    for model in models.split(","):
+        download.remote(model)
+        fn = bench if gpu == GPU else bench.with_options(gpu=gpu)
+        report = fn.remote(model, sizes, region, f"{ts}-{model}-{gpu}-bench", passages, gpu)
+        (local / f"{ts}-{model}-{gpu}.json").write_text(json.dumps(report, indent=1))
+        print(f"{model}: best {report.get('best')}")
+    print(f"reports in {local}")
