@@ -366,6 +366,48 @@ def git_worktree_fingerprint(repo_root: Path, excluded_prefix: str) -> str:
     return digest.hexdigest()
 
 
+def git_resolve(repo_root: Path, ref: str) -> str | None:
+    result = _git(repo_root, ["rev-parse", "--verify", "--quiet", ref])
+    return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else None
+
+
+def git_blob_id(repo_root: Path, ref: str, path: str) -> str | None:
+    return git_resolve(repo_root, f"{ref}:{path}")
+
+
+def git_file_hash(repo_root: Path, path: str) -> str | None:
+    result = _git(repo_root, ["hash-object", "--", path])
+    return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else None
+
+
+def git_tree_files(repo_root: Path, ref: str, directory: str) -> list[str]:
+    result = _git(repo_root, ["ls-tree", "-z", "--name-only", ref, "--", directory.rstrip("/") + "/"])
+    if result.returncode != 0:
+        raise GitUnavailable(result.stderr.strip() or "git ls-tree failed")
+    return [name for name in result.stdout.split("\0") if name.endswith(".md")]
+
+
+def git_show(repo_root: Path, ref: str, path: str) -> str | None:
+    result = _git(repo_root, ["show", f"{ref}:{path}"])
+    return result.stdout if result.returncode == 0 else None
+
+
+def git_tree_session_files(repo_root: Path, ref: str, directory: str, session_id: str) -> list[str]:
+    found = []
+    for name in git_tree_files(repo_root, ref, directory):
+        text = git_show(repo_root, ref, name)
+        frontmatter = parse(text).frontmatter if text is not None else None
+        if frontmatter and frontmatter.get("session") == session_id:
+            found.append(name)
+    return found
+
+
+def session_files(directory: Path, session_id: str) -> list[Path]:
+    if not session_id or not directory.is_dir():
+        return []
+    return [path for path in sorted(directory.glob("*.md")) if path.is_file() and session_of(path) == session_id]
+
+
 def git_is_ignored(repo_root: Path, path: str) -> bool:
     result = _git(repo_root, ["check-ignore", "-q", "--", path])
     if result.returncode not in (0, 1):

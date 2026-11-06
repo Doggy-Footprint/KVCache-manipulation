@@ -3,9 +3,12 @@
 Test command matching must stay identical between the two hooks: telemetry
 should recognize exactly the commands the gate blocks on.
 """
+import re
 from pathlib import Path
 
 TEST_COMMAND_PREFIX = "Test command:"
+COMMAND_START = r"(?:^|[;&|(]|\n)\s*"
+PR_CREATE_RE = re.compile(COMMAND_START + r"gh\s+pr\s+create\b")
 
 
 def normalize(command: str) -> str:

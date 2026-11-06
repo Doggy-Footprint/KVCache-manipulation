@@ -7,9 +7,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 import hook_shared  # noqa: E402
 
-COMMAND_START = r"(?:^|[;&|(]|\n)\s*"
-PR_CREATE_RE = re.compile(COMMAND_START + r"gh\s+pr\s+create\b")
-PR_EDIT_RE = re.compile(COMMAND_START + r"gh\s+pr\s+edit\b")
+PR_CREATE_RE = hook_shared.PR_CREATE_RE
+PR_EDIT_RE = re.compile(hook_shared.COMMAND_START + r"gh\s+pr\s+edit\b")
 BODY_FLAG_RE = re.compile(r"(?:^|\s)(?:--body(?:-file)?|-b|-F)(?:[\s=]|$)")
 
 

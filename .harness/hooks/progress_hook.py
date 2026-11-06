@@ -5,12 +5,14 @@ UserPromptSubmit and PreCompact notices go to stdout with exit 0.
 import datetime
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 import config  # noqa: E402
 import doc_commit  # noqa: E402
+import hook_shared  # noqa: E402
 import progress  # noqa: E402
 import session_lock  # noqa: E402
 
@@ -19,6 +21,8 @@ PATHS = config.load_paths()
 PROGRESS_DIR = PATHS.progress
 CHECK_COMMAND = "python3 .harness/bin/progress.py check"
 EDIT_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+HEAD_FLAG_RE = re.compile(r"(?<![\w-])(?:--head(?:=|\s+)|-H\s*)([^\s;&|)]+)")
+PR_OWN_CALL = "Run `gh pr create` in its own Bash call, not chained after other commands."
 
 
 def rel(path: Path) -> str:
@@ -46,11 +50,12 @@ def git_ready() -> bool:
 
 
 def own_progress(session_id: str | None) -> Path | None:
-    if not session_id or not PROGRESS_DIR.is_dir():
+    if not session_id:
         return None
-    for path in sorted(PROGRESS_DIR.glob("*.md")):
-        if path.is_file() and progress.session_of(path) == session_id:
-            return path
+    for directory in (PROGRESS_DIR, PATHS.progress_logs):
+        found = progress.session_files(directory, session_id)
+        if found:
+            return found[0]
     return None
 
 
@@ -196,9 +201,11 @@ def target_path(payload: dict) -> Path | None:
     if not path.is_absolute():
         path = Path(payload.get("cwd") or REPO_ROOT) / path
     path = path.resolve()
-    if not progress.is_progress_file(path, PROGRESS_DIR) or not path.is_file():
+    if not path.is_file():
         return None
-    return path
+    if progress.is_progress_file(path, PROGRESS_DIR) or progress.is_progress_file(path, PATHS.progress_logs):
+        return path
+    return None
 
 
 def other_live_sessions() -> list[tuple[str, str | None]]:
@@ -264,9 +271,81 @@ def rotation_refusal(path: Path, session_id: str | None, own_session: str | None
     return None
 
 
+def push_target(command: str) -> str:
+    match = hook_shared.PR_CREATE_RE.search(command)
+    tail = command[match.end():] if match else command
+    head = HEAD_FLAG_RE.search(tail)
+    if head:
+        branch = head.group(1).strip("\"'").split(":", 1)[-1]
+        if branch:
+            return f"refs/remotes/origin/{branch}"
+    return "@{push}"
+
+
+def gate_block(session_id: str, command: str) -> str | None:
+    if not git_ready() or not progress.git_head(REPO_ROOT):
+        return None
+    progress_rel = rel(PROGRESS_DIR)
+    logs_rel = rel(PATHS.progress_logs)
+    retire = f"python3 .harness/bin/progress.py retire --session {session_id}"
+    prefix = "harness: gh pr create blocked:"
+    own_call = f"{PR_OWN_CALL} Session: {session_id}."
+    in_progress = progress.session_files(PROGRESS_DIR, session_id)
+    if in_progress:
+        return (
+            f"{prefix} {rel(in_progress[0])} (session {session_id}) is still in {progress_rel}/ and would be left "
+            f"there after the merge. Run `{retire}` to move it to {logs_rel}/, commit it, push the branch, "
+            f"then run `gh pr create` again. {own_call}"
+        )
+    in_logs = progress.session_files(PATHS.progress_logs, session_id)
+    if not in_logs:
+        if modified_project(session_id):
+            return (
+                f"{prefix} session {session_id} changed the project but has no progress in {progress_rel}/ or "
+                f"{logs_rel}/. Write {progress_rel}/<16-hex-id>-<kebab-name>.md following the Progress Rule in "
+                f"AGENTS.md, run `{retire}`, commit, push, then run `gh pr create` again. {own_call}"
+            )
+    committed = progress.git_tree_session_files(REPO_ROOT, "HEAD", progress_rel, session_id)
+    if committed:
+        return (
+            f"{prefix} HEAD still holds {committed[0]} (session {session_id}) in {progress_rel}/. "
+            f"Run `{retire}` if it is not retired yet, commit {logs_rel}/ and the removal of {committed[0]}, "
+            f"push, then run `gh pr create` again. {own_call}"
+        )
+    logs_path = rel(in_logs[0]) if in_logs else None
+    head_blob = None
+    if logs_path:
+        head_blob = progress.git_blob_id(REPO_ROOT, "HEAD", logs_path)
+        if head_blob is None or head_blob != progress.git_file_hash(REPO_ROOT, logs_path):
+            return (
+                f"{prefix} {logs_path} (session {session_id}) is not committed or has uncommitted changes. "
+                f"Commit it, push, then run `gh pr create` again. {own_call}"
+            )
+    target = progress.git_resolve(REPO_ROOT, push_target(command))
+    if target is None:
+        return None
+    pushed = progress.git_tree_session_files(REPO_ROOT, target, progress_rel, session_id)
+    if pushed or (logs_path and progress.git_blob_id(REPO_ROOT, target, logs_path) != head_blob):
+        shown = pushed[0] if pushed else logs_path
+        return (
+            f"{prefix} the push target does not hold the retired progress of session {session_id} "
+            f"({shown}). Push the branch, then run `gh pr create` again. {own_call}"
+        )
+    return None
+
+
 def on_pre_tool_use(payload: dict) -> int:
     session_id = session_id_of(payload)
     tool_use_id = payload.get("tool_use_id")
+    command = hook_shared.shell_command(payload.get("tool_input"))
+    if payload.get("tool_name") == "Bash" and session_id and hook_shared.PR_CREATE_RE.search(command):
+        try:
+            message = gate_block(session_id, command)
+        except (OSError, progress.GitUnavailable):
+            message = None
+        if message:
+            print(message, file=sys.stderr)
+            return 2
     if payload.get("tool_name") != "Bash" or not session_id or not isinstance(tool_use_id, str) or not tool_use_id:
         return 0
     try:
@@ -304,12 +383,43 @@ def on_post_tool_use_failure(payload: dict) -> int:
     return 0
 
 
+def finding_lines(path: Path, label: str) -> list[str]:
+    try:
+        findings = progress.check_findings(path, REPO_ROOT, label)
+    except progress.GitUnavailable:
+        findings = [f"git unavailable; entry checks skipped for {label}. Run `{CHECK_COMMAND} {label}` once git works."]
+    if not findings:
+        return []
+    return [f"harness: progress check findings for {label}; fix each one:", *(f"  - {finding}" for finding in findings)]
+
+
+def on_logs_edit(path: Path, session_id: str | None) -> int:
+    if not session_id or progress.session_of(path) != session_id:
+        return 0
+    label = rel(path)
+    if not git_ready():
+        print(
+            f"harness: git unavailable; entry checks skipped for {label}. "
+            f"Run `{CHECK_COMMAND} {label}` once git works.",
+            file=sys.stderr,
+        )
+        return 2
+    sync_requests(path, session_id)
+    messages = finding_lines(path, label)
+    if not messages:
+        return 0
+    print("\n".join(messages), file=sys.stderr)
+    return 2
+
+
 def on_post_tool_use(payload: dict) -> int:
     record_modification_safely(payload)
     path = target_path(payload)
     if path is None:
         return 0
     label = rel(path)
+    if path.parent == PATHS.progress_logs.resolve():
+        return on_logs_edit(path, session_id_of(payload))
     if not git_ready():
         print(
             f"harness: git unavailable; entry checks skipped for {label}. "
@@ -329,6 +439,15 @@ def on_post_tool_use(payload: dict) -> int:
         )
         return 2
     own_session = parsed.frontmatter.get("session") or session_id
+    owned_logs = progress.session_files(PATHS.progress_logs, own_session) if own_session else []
+    if owned_logs:
+        print(
+            f"harness: {label} not accepted: session {own_session} already owns {rel(owned_logs[0])}, and a "
+            f"session owns one progress. Merge the content of {label} into {rel(owned_logs[0])}, then remove "
+            f"{label}. No file was moved.",
+            file=sys.stderr,
+        )
+        return 2
     refusal = rotation_refusal(path, session_id, own_session)
     if refusal:
         print(refusal, file=sys.stderr)
@@ -360,13 +479,7 @@ def on_post_tool_use(payload: dict) -> int:
     else:
         current = path.read_text(encoding="utf-8")
         write_progress(path, current, current)
-    try:
-        findings = progress.check_findings(path, REPO_ROOT, label)
-    except progress.GitUnavailable:
-        findings = [f"git unavailable; entry checks skipped for {label}. Run `{CHECK_COMMAND} {label}` once git works."]
-    if findings:
-        messages.append(f"harness: progress check findings for {label}; fix each one:")
-        messages.extend(f"  - {finding}" for finding in findings)
+    messages.extend(finding_lines(path, label))
     if not messages:
         return 0
     print("\n".join(messages), file=sys.stderr)
@@ -388,6 +501,29 @@ def on_pre_compact(payload: dict) -> int:
         f"harness: before compaction, update {target} with the current state, next step, user constraints, "
         "and dead ends, following the Progress Rule in AGENTS.md."
     )
+    return 0
+
+
+def stop_logs_block(own: Path) -> int:
+    label = rel(own)
+    try:
+        head_blob = progress.git_blob_id(REPO_ROOT, "HEAD", label)
+        if head_blob is None or head_blob != progress.git_file_hash(REPO_ROOT, label):
+            print(
+                f"harness: {label} is not committed or has uncommitted changes. Commit it and push the branch "
+                "before stopping.",
+                file=sys.stderr,
+            )
+            return 2
+        target = progress.git_resolve(REPO_ROOT, "@{push}")
+        if target is not None and progress.git_blob_id(REPO_ROOT, target, label) != head_blob:
+            print(
+                f"harness: {label} is committed but not pushed. Push the branch before stopping.",
+                file=sys.stderr,
+            )
+            return 2
+    except progress.GitUnavailable:
+        return 0
     return 0
 
 
@@ -418,6 +554,8 @@ def on_stop(payload: dict) -> int:
             file=sys.stderr,
         )
         return 2
+    if own.parent.resolve() == PATHS.progress_logs.resolve():
+        return stop_logs_block(own)
     return 0
 
 

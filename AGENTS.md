@@ -5,7 +5,7 @@ RQ1: how a length-matched prefix (hint, misleading hint, persona) changes V, pre
 RQ2: whether a conversational topic shift is detectable from new-token K/V and attention mass on pre-shift tokens, separating the declaration of a shift from an actual content shift.
 All distances are reported relative to a filler-vs-filler noise floor. Source proposal: `kv_experiment_plan.md` (Korean); English version `docs/experiment_plan.md`; citations `refs/references.md`.
 
-<!-- harness:begin 0.35.0 -->
+<!-- harness:begin 0.37.0 -->
 # Documentation Guide
 
 "Documentation" refers to standalone docs, inline comments, and docstrings.
@@ -91,7 +91,7 @@ Append rows for new attempts at the same goal; never delete or edit existing row
 
 ## Progress Rule
 
-Directory: `agent-docs/progress/`, holding at most one `<16-char-hex-id>-<kebab-case-name>.md`, the current session's. Every session in which Claude Code changes the project (edits, patches, commits, or other commands that change the working tree or HEAD) writes one and commits it with the work; files changed outside the session's own tool calls, under `.harness/`, or ignored by git do not count. A Bash command run in the background is checked only until its tool call returns, so later changes it makes are not seen. When a new session writes its progress, a hook moves the previous one to `agent-docs/progress-logs/` under the same name; a merge moves progress files it adds there too. One progress per session: merge into the existing one instead of writing a second. Rotation does not move a progress whose session is still running in another process. Parallel sessions on one checkout are not supported.
+Directory: `agent-docs/progress/`, holding at most one `<16-char-hex-id>-<kebab-case-name>.md`, the current session's. Every session in which Claude Code changes the project (edits, patches, commits, or other commands that change the working tree or HEAD) writes one and commits it with the work; files changed outside the session's own tool calls, under `.harness/`, or ignored by git do not count. A Bash command run in the background is checked only until its tool call returns, so later changes it makes are not seen. When a new session writes its progress, a hook moves the previous one to `agent-docs/progress-logs/` under the same name; a merge moves progress files it adds there too. One progress per session: merge into the existing one instead of writing a second. Rotation does not move a progress whose session is still running in another process. Parallel sessions on one checkout are not supported. `gh pr create` from a Claude Code session is blocked until the session's progress is retired to `agent-docs/progress-logs/` (`python3 .harness/bin/progress.py retire`), committed, and pushed, so a merged PR leaves nothing in `progress/` to move; run `gh pr create` in its own Bash call. After retiring, the session keeps editing its progress in `progress-logs/`, which gets the same checks and User Requests sync, and Stop blocks while that file is uncommitted or unpushed.
 
 Frontmatter: `session` (Claude Code session id), `before` (repo path of the progress moved to logs when this one was created, or `none`), `previous` (repo path of the progress this session continued through `/continue-on`, or `none`), `branch`, and the `commit` stamp. `before` records order only; `previous` records an explicit continuation.
 

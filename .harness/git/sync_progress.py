@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -33,13 +34,15 @@ def sync(path: Path, head: str) -> bool:
 
 
 def main() -> int:
-    if not PATHS.progress.is_dir():
-        return 0
     try:
         head = progress.git_head(REPO_ROOT)
     except progress.GitUnavailable:
         return 0
-    for path in sorted(PATHS.progress.glob("*.md")):
+    paths = sorted(PATHS.progress.glob("*.md")) if PATHS.progress.is_dir() else []
+    session_id = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if session_id:
+        paths += progress.session_files(PATHS.progress_logs, session_id)
+    for path in paths:
         if path.is_file() and sync(path, head):
             subprocess.run(["git", "-C", str(REPO_ROOT), "add", "--", str(path)], check=False)
     return 0

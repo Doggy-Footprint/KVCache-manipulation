@@ -31,8 +31,11 @@ In scope are documents governed by the harness rules in `AGENTS.md` (standalone 
 
 Never edit these; report a problem found in them instead:
 - the managed block, and files listed in `.harness/manifest.json`. These come from the harness, so carry the change upstream instead.
-- `agent-docs/specs/` and `agent-docs/spec-logs/`.
 - generated files. Edit their source and regenerate them as the project's `AGENTS.md` describes.
+
+Leave these out entirely: do not search, read, edit, or report on them, and do not add them to `agent-docs/sync-state.json`. They are workflow state and run or session records, not rules:
+- `agent-docs/specs/`, `agent-docs/spec-logs/`, `agent-docs/progress/`, and `agent-docs/progress-logs/`;
+- `stale.md` and `stale/` in every agent-managed directory.
 
 Read `AGENTS.md` and `CLAUDE.md` in full on every run. Find the other related documents by searching the scope for the paths, symbols, commands, terms, and versions the diff touched. Also check the `Related Files` and `Related Symbols` fields in `index.md` and the synced-comment tracking files.
 

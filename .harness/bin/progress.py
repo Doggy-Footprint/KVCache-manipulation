@@ -117,6 +117,61 @@ def cmd_check(args) -> int:
     return 1 if findings else 0
 
 
+def tracked(path: Path) -> bool:
+    result = progress._git(REPO_ROOT, ["ls-files", "--error-unmatch", "--", rel(path)])
+    return result.returncode == 0
+
+
+def git_step(args: list[str]) -> str | None:
+    result = progress._git(REPO_ROOT, args)
+    return None if result.returncode == 0 else (result.stderr.strip() or f"git {args[0]} failed")
+
+
+def cmd_retire(args) -> int:
+    session_id = args.session or os.environ.get(SESSION_ENV) or None
+    if not session_id:
+        return fail(f"no session id; pass --session <id> or set ${SESSION_ENV}")
+    own = progress.session_files(PATHS.progress, session_id)
+    if not own:
+        return fail(f"session {session_id} owns no file in {rel(PATHS.progress)}/; nothing to retire")
+    if len(own) > 1:
+        return fail(
+            f"session {session_id} owns several files in {rel(PATHS.progress)}/ ({', '.join(rel(path) for path in own)}); "
+            "merge them into one and remove the others, then run retire again"
+        )
+    existing = progress.session_files(PATHS.progress_logs, session_id)
+    if existing:
+        return fail(
+            f"session {session_id} already owns {rel(existing[0])}; merge {rel(own[0])} into it and remove "
+            f"{rel(own[0])} instead of retiring"
+        )
+    source = own[0]
+    destination = PATHS.progress_logs / source.name
+    if destination.exists():
+        return fail(f"{rel(destination)} already exists; rename {rel(source)} to a new 16-hex id, then run retire again")
+    try:
+        was_tracked = tracked(source)
+        PATHS.progress_logs.mkdir(parents=True, exist_ok=True)
+        if was_tracked:
+            error = git_step(["mv", "--", rel(source), rel(destination)])
+            if error:
+                return fail(f"git mv {rel(source)} {rel(destination)} failed: {error}")
+        else:
+            os.rename(source, destination)
+        error = git_step(["add", "--", rel(destination)])
+        if error:
+            if was_tracked:
+                git_step(["mv", "--", rel(destination), rel(source)])
+            else:
+                git_step(["rm", "--cached", "-q", "--ignore-unmatch", "--", rel(destination)])
+                os.rename(destination, source)
+            return fail(f"git add {rel(destination)} failed: {error}; {rel(source)} was left in place")
+    except (OSError, progress.GitUnavailable) as exc:
+        return fail(f"cannot retire {rel(source)}: {exc}")
+    print(f"retired: {rel(source)} -> {rel(destination)}")
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(prog="progress.py")
     commands = value.add_subparsers(dest="command", required=True)
@@ -127,6 +182,9 @@ def parser() -> argparse.ArgumentParser:
     check = commands.add_parser("check", help="validate a progress file")
     check.add_argument("path")
     check.set_defaults(handler=cmd_check)
+    retire = commands.add_parser("retire", help="move this session's progress to the logs directory and stage it")
+    retire.add_argument("--session", help=f"session id (default: ${SESSION_ENV})")
+    retire.set_defaults(handler=cmd_retire)
     return value
 
 

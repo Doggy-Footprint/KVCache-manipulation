@@ -3,7 +3,7 @@ session: 8b1a6763-3bf0-4c4e-afb0-76aedb43165d
 before: agent-docs/progress-logs/f1a02e3c081ac62d-h200-batch-size-bench.md
 previous: agent-docs/progress-logs/f1a02e3c081ac62d-h200-batch-size-bench.md
 branch: main
-commit: f3ce6847795455a9cd052a829ea528a6727491a7
+commit: 0bfda657d7f32c49df872601d1c69f3b868b181b
 ---
 
 # Exp1 at 100 passages, Qwen3-4B run locally
@@ -280,3 +280,69 @@ commit: f3ce6847795455a9cd052a829ea528a6727491a7
 #### 27 — 2026-11-06T04:19:01Z
 
 > 커밋
+
+#### 28 — 2026-11-06T04:20:42Z
+
+> 이 연구에 어떤 가치가 있어? 어떤 정보를 줄 수 있고, 내가 이걸 계속 할 가치가 있는지 궁금해
+
+#### 29 — 2026-11-06T04:31:24Z
+
+> 일단 의논을 좀 해보자. 여기부턴 off the record고, 논의가 끝나면 rewind할거야.
+> 
+> 나는 encoder-decoder와 decoder-only 모델의 차이를 보고 싶었어. 그 중에 KVCache 계산할 때 casual masking으로 앞 부분은 뒤를 못 본다는 게 눈에 들어왔고.
+> 
+> 그래서 뒤를 모르는 상태에서 앞만 보고 있는 게 실제로 영향을 주는지가 궁금했어.
+
+#### 30 — 2026-11-06T04:35:18Z
+
+> 아, 저건 좀 최종 질문이고, 이 프로젝트에서 보고 싶은건 KV의 값을 읽어보는 거였어. 내가 볼 수 있는 형태로 뽑을 수 있을지 궁금했어
+
+#### 31 — 2026-11-06T04:41:34Z
+
+> 그림에 더 가까운 거 같아. 제안 대로 1, 2, 3을 하자. 이거 디스크 용량 써? 카페에서 작업할건데 거기서는 네트워크 연결이 자유롭지 않을 거라서 drive에 올리는 방향으로 해결할 수가 없어
+
+#### 32 — 2026-11-06T04:43:06Z
+
+> 가중치 다운 받아.
+
+#### 33 — 2026-11-06T04:43:39Z
+
+> mlx 말고 torch / transformers 쓰는 이유가 있어?
+
+#### 34 — 2026-11-06T04:44:33Z
+
+> mlx 대신 torch, transformer 쓰는 이유가 있어?
+
+#### 35 — 2026-11-06T04:45:26Z
+
+> 4B 해보자.
+
+#### 36 — 2026-11-06T04:57:56Z
+
+> <task-notification>
+> <task-id>bhjx92ulx</task-id>
+> <tool-use-id>toolu_015bsD5T8LKv8mCfW1khSheP</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-toy-projects-understand-KVCache/8b1a6763-3bf0-4c4e-afb0-76aedb43165d/tasks/bhjx92ulx.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Cache unembedding, then explore readings on 4B" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 37 — 2026-11-06T05:02:39Z
+
+> <task-notification>
+> <task-id>b9w94grzk</task-id>
+> <tool-use-id>toolu_01Qp2aDVZYqr8fX16nf73JDc</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-toy-projects-understand-KVCache/8b1a6763-3bf0-4c4e-afb0-76aedb43165d/tasks/b9w94grzk.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Execute the KV-reading notebook on 4B" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 38 — 2026-11-06T05:05:11Z
+
+> <task-notification>
+> <task-id>bpneij69w</task-id>
+> <tool-use-id>toolu_0133Fs972MbMzLzCXm6g2sKx</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-toy-projects-understand-KVCache/8b1a6763-3bf0-4c4e-afb0-76aedb43165d/tasks/bpneij69w.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Disable mathtext parsing and re-execute the notebook" completed (exit code 0)</summary>
+> </task-notification>
