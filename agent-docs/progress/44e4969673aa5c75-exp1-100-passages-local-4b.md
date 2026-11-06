@@ -3,7 +3,7 @@ session: 8b1a6763-3bf0-4c4e-afb0-76aedb43165d
 before: agent-docs/progress-logs/f1a02e3c081ac62d-h200-batch-size-bench.md
 previous: agent-docs/progress-logs/f1a02e3c081ac62d-h200-batch-size-bench.md
 branch: main
-commit: 4cfb44f8c786a6d2b7dcf96c10ace839d749e522
+commit: ba69bb22699fcad8f4c97f8643ce7651dc0f5e95
 ---
 
 # Exp1 at 100 passages, Qwen3-4B run locally
@@ -39,9 +39,13 @@ commit: 4cfb44f8c786a6d2b7dcf96c10ace839d749e522
   - commit: 4cfb44f; files: none
 
 ### Next Step
-- Full local run `runs/exp1-100p-4b/main` started 2026-11-06 04:08 KST, detached (`NAME=main nohup scripts/local_exp1.sh --only $(cat runs/exp1-100p-4b/main/order.txt) --deadline 2026-11-06T14:00`). Order: the 30 head-sweep passages round-robin over categories, then the other 70 round-robin. The driver starts no passage whose expected end is past the deadline. Check `runs/exp1-100p-4b/main/run.log`, `timings.jsonl`, `uploaded.txt`; resume the next night with the same command and a new `--deadline`, or move the remainder to a rented server (user undecided; cross-device rows must not be pooled).
-  - commit: 4cfb44f; files: src/kvmeaning/local_exp1.py, scripts/local_exp1.sh
+- Run `runs/exp1-100p-4b/main` stopped by the user's request at 2026-11-06 12:57 KST (SIGTERM, exit 143; SIGINT was not acted on within 10 s). Complete: 25 passages (the first 25 of `runs/exp1-100p-4b/main/order.txt`, all head-sweep passages, 5 per category). Passage 26 `bus021`: both designs extracted, stats written and uploaded, patch bbc-v1 body/prefix and bbc-v2 body done, bbc-v2 prefix missing. Remote `gdrive:understand-KVCache/exp1-100p-4b/main`: 936 objects, 51.2 GiB (52 units = 26 passages × 2 designs); local buffer empty; local stats 7.4 GB. Resume with `NAME=main nohup scripts/local_exp1.sh --only $(cat runs/exp1-100p-4b/main/order.txt) --deadline <YYYY-MM-DDTHH:MM> >/dev/null 2>&1 &`; remaining: bus021 bbc-v2 prefix, 4 head-sweep passages (ent315 pol140 spo157 tec370), then 70 heads-off passages. User has not decided between a second local night and a rented server.
+  - commit: ba69bb2; files: src/kvmeaning/local_exp1.py, scripts/local_exp1.sh
+- Measured over passages 1–25 (heads on): 1184–1299 s per passage, upload 4.7–6.1 MB/s, buffer wait 0 s throughout, swap 2.0–3.6 GB, no errors.
+  - commit: ba69bb2; files: none
 ### Constraints
+- "지금 바로 멈춰줘"
+  - source: user prompt, this session (12:57 KST)
 - "스모크 완료하면 내일 오후 2시까지 돌릴 수 있는 분량으로 돌려줘 본 실험은 서버 대여해서 하는 게 낫겠다"
   - source: user prompt, this session (interpreted as 2026-11-06 14:00 KST)
 - "아니면 이틀 밤에 나눠서 하거나"
@@ -185,3 +189,86 @@ commit: 4cfb44f8c786a6d2b7dcf96c10ace839d749e522
 #### 14 — 2026-11-05T19:12:54Z
 
 > 커밋해.
+
+#### 15 — 2026-11-05T19:15:24Z
+
+> <task-notification>
+> <task-id>ber7c9xvg</task-id>
+> <summary>Monitor event: "exp1 main run: passage completions, uploads, errors"</summary>
+> <event>[2026-11-06 04:12:34] upload: bbc-v1/exp1/bus482 1.02 GB in 173s (5.9 MB/s)</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+> </task-notification>
+
+#### 16 — 2026-11-05T19:15:54Z
+
+> <task-notification>
+> <task-id>ber7c9xvg</task-id>
+> <summary>Monitor event: "exp1 main run: passage completions, uploads, errors"</summary>
+> <event>[2026-11-06 04:15:24] upload: bbc-v2/exp1/bus482 1.03 GB in 170s (6.1 MB/s)</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+> </task-notification>
+
+#### 17 — 2026-11-05T19:30:41Z
+
+> <task-notification>
+> <task-id>ber7c9xvg</task-id>
+> <summary>Monitor event: "exp1 main run: passage completions, uploads, errors"</summary>
+> <event>[04:30:10] local exp1 1/100 bus482 1298.7s bbc-v1:ext=63s,stats=4s,wait=0s bbc-v2:ext=71s,stats=2s,wait=0s bbc-v1/body=301s bbc-v1/prefix=283s bbc-v2/body=285s bbc-v2/prefix=284s heads=on buffer=0.0GB queued=0 swap=2762.31M elapsed=0:21:39 eta=35:42:52</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+> </task-notification>
+
+#### 18 — 2026-11-05T19:36:18Z
+
+> <task-notification>
+> <task-id>ber7c9xvg</task-id>
+> <summary>Monitor event: "exp1 main run: passage completions, uploads, errors"</summary>
+> <event>[2026-11-06 04:34:12] upload: bbc-v1/exp1/ent165 1.01 GB in 207s (4.9 MB/s)</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+> </task-notification>
+
+#### 19 — 2026-11-05T19:40:20Z
+
+> <task-notification>
+> <task-id>ber7c9xvg</task-id>
+> <summary>Monitor event: "exp1 main run: passage completions, uploads, errors"</summary>
+> <event>[Monitor expired after 30m with 4 events delivered. Re-arm it if you still need the watch.]</event>
+> </task-notification>
+
+#### 20 — 2026-11-05T19:40:20Z
+
+> <task-notification>
+> <task-id>ber7c9xvg</task-id>
+> <summary>Monitor event: "exp1 main run: passage completions, uploads, errors"</summary>
+> <event>[2026-11-06 04:37:36] upload:</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+> </task-notification>
+
+#### 21 — 2026-11-05T23:11:40Z
+
+> 진행 상황 체크
+
+#### 22 — 2026-11-06T01:11:45Z
+
+> 진행 상황 체크
+
+#### 23 — 2026-11-06T01:12:21Z
+
+> 아 2시에 종료하는 방향이야? 그럼 혹시 늘리거나 줄일 수도 있어?
+
+#### 24 — 2026-11-06T03:56:56Z
+
+> 지금 바로 멈춰줘
+
+#### 25 — 2026-11-06T03:58:02Z
+
+> <task-notification>
+> <task-id>bhccg7i59</task-id>
+> <tool-use-id>toolu_01TnNARxviXitQiSshn7s7fn</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-toy-projects-understand-KVCache/8b1a6763-3bf0-4c4e-afb0-76aedb43165d/tasks/bhccg7i59.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Wait until the exp1 run exits or errors" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 26 — 2026-11-06T03:59:11Z
+
+> 커밋해. 지금까지의 결과로 1차 파일럿 보고 해줘.
