@@ -3,7 +3,7 @@ session: 8b1a6763-3bf0-4c4e-afb0-76aedb43165d
 before: agent-docs/progress-logs/f1a02e3c081ac62d-h200-batch-size-bench.md
 previous: agent-docs/progress-logs/f1a02e3c081ac62d-h200-batch-size-bench.md
 branch: main
-commit: ba69bb22699fcad8f4c97f8643ce7651dc0f5e95
+commit: f3ce6847795455a9cd052a829ea528a6727491a7
 ---
 
 # Exp1 at 100 passages, Qwen3-4B run locally
@@ -33,6 +33,8 @@ commit: ba69bb22699fcad8f4c97f8643ce7651dc0f5e95
   - commit: 4cfb44f; files: none
 - `local_exp1.Run.run` now keeps the order of `--only` (unknown ids raise) and takes `--deadline YYYY-MM-DDTHH:MM`; expected passage time starts at 1250 s (heads on) / 520 s (heads off) and is replaced by the last measured passage of the same kind.
   - commit: 4cfb44f; files: src/kvmeaning/local_exp1.py, tests/tiny/test_local_exp1.py
+- Report `reports/20261106-bbc-4b-local-pilot1/README.md` (Korean, subagent; 6.4 MB with `analyze.py`, `data/summary_bbc-v{1,2}.json`, `data/numbers.json`, figures, 6 executed notebooks; uncommitted). All tables use the first 25 passages of `order.txt`. Readings: v2 body-end KL medians H+ 0.020, H- 0.032, C+ 0.011, C- 0.016, N0 0.020, floor F2 0.006, P1 0.072; H+ vs H- KL 0.024 above floor in 25/25, C+ vs C- 0.007. all_kv KL-recovery medians (re-checked from `results.jsonl` in this session) v1 body H+ −0.02, H- −0.11, C+ 0.18, C- −0.22, F2 0.94; v1 prefix H+ 0.84, H- 0.58, C+ 0.91, C- 0.78, P1 0.99, F2 0.08; v2 body H+ −0.90, H- 0.68, C± 0.59–0.60, F2 0.35; v2 prefix H+ −0.47, H- 0.65, C+ 0.52, C- 0.41, P1 0.99. Layer-0 body patch (no-op by construction) gives |recovery| median 0.13–0.15 for v2 C±/F2, so KL recovery is noisy where the KL denominator is small. Continuation log-prob ratio (new metric in the report): H± prefix 0.88–0.99, body 0.03–0.09; recomputed on the 2026-11-05 pilot rows H- prefix 0.40–0.41, body 0.13–0.20. v2 H+ prefix KL recovery −0.47 vs continuation ratio 0.99 not explained (needs model reruns).
+  - commit: f3ce684; files: reports/20261106-bbc-4b-local-pilot1/README.md, reports/20261106-bbc-4b-local-pilot1/analyze.py
 - Google Drive for desktop is mounted at `~/Library/CloudStorage/GoogleDrive-<account>/My Drive` (File Provider path, `content_cache` present under `~/Library/Application Support/Google/DriveFS/<id>/`). Sync mode (stream vs mirror) and upload throughput not checked. Not used: rclone chosen instead (user installed rclone and configured remote `gdrive:`).
   - commit: 4cfb44f; files: none
 - Local free disk 91 GB of 460 GB (`df -h /System/Volumes/Data`, 2026-11-06).
@@ -44,6 +46,8 @@ commit: ba69bb22699fcad8f4c97f8643ce7651dc0f5e95
 - Measured over passages 1–25 (heads on): 1184–1299 s per passage, upload 4.7–6.1 MB/s, buffer wait 0 s throughout, swap 2.0–3.6 GB, no errors.
   - commit: ba69bb2; files: none
 ### Constraints
+- "커밋해. 지금까지의 결과로 1차 파일럿 보고 해줘."
+  - source: user prompt, this session
 - "지금 바로 멈춰줘"
   - source: user prompt, this session (12:57 KST)
 - "스모크 완료하면 내일 오후 2시까지 돌릴 수 있는 분량으로 돌려줘 본 실험은 서버 대여해서 하는 게 낫겠다"
@@ -272,3 +276,7 @@ commit: ba69bb22699fcad8f4c97f8643ce7651dc0f5e95
 #### 26 — 2026-11-06T03:59:11Z
 
 > 커밋해. 지금까지의 결과로 1차 파일럿 보고 해줘.
+
+#### 27 — 2026-11-06T04:19:01Z
+
+> 커밋
