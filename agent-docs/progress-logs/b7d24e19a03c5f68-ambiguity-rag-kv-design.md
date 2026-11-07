@@ -3,7 +3,7 @@ session: 997adeda-46be-4f41-966d-92e76059b54c
 before: agent-docs/progress-logs/44e4969673aa5c75-exp1-100-passages-local-4b.md
 previous: none
 branch: worktree-exp-ambiguity-icl
-commit: 68e9763b1ce429b4458fc3f7090f07be880e53a4
+commit: e09300e207ee2b25b5172fbf22c96a90f9800358
 ---
 
 # Ambiguity in RAG documents: explanation conditions vs KV cache (design stage)
@@ -54,6 +54,7 @@ commit: 68e9763b1ce429b4458fc3f7090f07be880e53a4
 ### Changes
 - Created the worktree; reading helpers copied in and committed. No experiment code yet.
 - Fast-forwarded `main` from 477354b to 68e9763 at the user's request ("메인에 머지해놔"), from the main checkout after leaving the worktree (kept on disk). The main checkout's untracked `src/kvmeaning/reading.py` and `tests/tiny/test_reading.py` were byte-identical (`cmp`) to the committed versions and were removed so the merge could proceed. The post-merge hook moved this progress to `agent-docs/progress-logs/`. `notebooks/kv_reading.ipynb` and `figures/kv_reading/` remain untracked in the main checkout.
+- Committed `notebooks/kv_reading.ipynb` (executed, 1.1 MB; output contains two IPython warning paths under the local .venv) and `figures/kv_reading/` (8 PNG, 1.1 MB) on `main` at the user's request ("커밋"). These are the earlier KV-reading results: same-word KV distance, attention maps, V→vocab lens differences, KV Patchscope tables and layer sweep on Qwen3-4B, n=1 sentence per condition.
 - `.gitignore` gains `.claude/worktrees/`: without it the main checkout sees worktree files as untracked, and the harness counts worktree edits as main-checkout changes (see the harness todo).
 - Moved the previous session's progress (44e4969673aa5c75) to `agent-docs/progress-logs/` unchanged, at the user's request; its content was not edited (a session edits only its own progress).
 - Added todo `agent-docs/todos/c4e81a7f2d90b356-harness-hooks-worktree-root.md` and its index entry in this worktree; writing it to the main checkout path was refused by worktree isolation.
@@ -139,3 +140,11 @@ commit: 68e9763b1ce429b4458fc3f7090f07be880e53a4
 #### 12 — 2026-11-06T23:59:40Z
 
 > 메인에 머지해놔
+
+#### 13 — 2026-11-07T00:01:58Z
+
+> 커밋
+
+#### 14 — 2026-11-07T00:02:14Z
+
+> 실험은 새로운 worktree에서 할 거니까 지워도 돼
