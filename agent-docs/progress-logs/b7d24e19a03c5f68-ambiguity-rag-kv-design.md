@@ -11,7 +11,7 @@ commit: e09300e207ee2b25b5172fbf22c96a90f9800358
 ## Next Session
 
 ### State
-- `main` at 68e9763 contains `src/kvmeaning/reading.py` and `tests/tiny/test_reading.py` (attention maps, V→vocab lens, KV transplant / Patchscope helpers), the harness todo, and `.claude/worktrees/` in `.gitignore`. Worktree `.claude/worktrees/exp-ambiguity-icl` (branch `worktree-exp-ambiguity-icl`, same commit) is kept on disk. `notebooks/kv_reading.ipynb` and `figures/kv_reading/` are untracked in the main checkout.
+- `main` at 68e9763 contains `src/kvmeaning/reading.py` and `tests/tiny/test_reading.py` (attention maps, V→vocab lens, KV transplant / Patchscope helpers), the harness todo, and `.claude/worktrees/` in `.gitignore`. Worktree `.claude/worktrees/exp-ambiguity-icl` and branch `worktree-exp-ambiguity-icl` were removed after the merge (user: the experiment will run in a new worktree). `notebooks/kv_reading.ipynb` and `figures/kv_reading/` are committed in d9b0fb2.
   - commit: 68e9763; files: src/kvmeaning/reading.py, tests/tiny/test_reading.py, .gitignore
 - Design; the 6 conditions were approved by the user, ground-truth rule and dataset set not yet: prompt `[system] [explanation] [retrieved document] [question] → forced-choice answer`; conditions: no explanation, correct explanation before document, correct after, wrong before, wrong after, length-matched unrelated sentence before (noise floor). Ground truth: a weak disambiguating cue placed in the document after the ambiguous span. 4 types × 15 items: lexical (AmbiEnt + hand-made), structural (AmbiEnt), pragmatic indirect answers (Circa), same-name entities (AmbigDocs).
   - commit: 477354b24f8aee058efaf19497a5924d0d58814e; files: none
