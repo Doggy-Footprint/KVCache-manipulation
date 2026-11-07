@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 97180ac7956db87f09b1a59baca4846fa712ac38
+commit: 251d5ac26b82fe0144f26b3c7c7cdea25e2dcdb8
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -18,6 +18,8 @@ commit: 97180ac7956db87f09b1a59baca4846fa712ac38
   - commit: 97180ac; files: none
 - Project env has no pandas/pyarrow; Circa parquet was read with `uv run --with pyarrow` (not added to dependencies).
   - commit: 97180ac; files: pyproject.toml
+- One sample item per type shown to the user (not saved in repo; script in session scratchpad `sample_items.py`): lexical AmbiEnt 82_c, structural AmbiEnt 44_c, pragmatic Circa row "Is price a deal breaker?" / "There are other things to consider too." (judgements PN#PN#PY#PY#PY), same-name AmbigDocs test qid 55871 (Bhabhi 1938 / 1957). Cues and explanations are hand-written. AmbiEnt `analysis/category_annotations.jsonl` labels 100 ambiguous items: lexical 18, syntactic 9, scopal 7, coreferential 3, pragmatic 42. Token counts with the pinned tokenizer (revision cdbee75f…): correct/wrong explanations differ by 0–2 tokens, unrelated sentence 17 vs 17–26, cue A/B differ by 0–6 tokens, so exact length matching is not yet done. Preprocessing (load AmbigDocs test, AmbiEnt, tokenizer, tokenize) peak RSS 526 MB, 4.4 s on CPU.
+  - commit: 251d5ac; files: none
 
 ### Next Step
 - Draft 60 items (4 types × 15) for user review, after the user confirms the item format proposed in chat (one example per type first).
@@ -64,3 +66,8 @@ commit: 97180ac7956db87f09b1a59baca4846fa712ac38
 #### 1 — 2026-11-07T00:14:23Z
 
 > /continue-on ambiguity-rag-kv-design
+
+#### 2 — 2026-11-07T00:21:17Z
+
+> 실제 데이터로 만들어서 보여주고, 
+> GPU 작업 전 전처리는 CPU 작업이야? memory 많이 먹어?
