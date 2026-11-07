@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 76e0caba323b876d2b086008433cd815627562d0
+commit: e067e4b5b2cdee7f702dd3297c050f9b3e678cc0
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -21,17 +21,20 @@ commit: 76e0caba323b876d2b086008433cd815627562d0
 - One sample item per type shown to the user (not saved in repo; script in session scratchpad `sample_items.py`): lexical AmbiEnt 82_c, structural AmbiEnt 44_c, pragmatic Circa row "Is price a deal breaker?" / "There are other things to consider too." (judgements PN#PN#PY#PY#PY), same-name AmbigDocs test qid 55871 (Bhabhi 1938 / 1957). Cues and explanations are hand-written. AmbiEnt `analysis/category_annotations.jsonl` labels 100 ambiguous items: lexical 18, syntactic 9, scopal 7, coreferential 3, pragmatic 42. Token counts with the pinned tokenizer (revision cdbee75f…): correct/wrong explanations differ by 0–2 tokens, unrelated sentence 17 vs 17–26, cue A/B differ by 0–6 tokens, so exact length matching is not yet done. Preprocessing (load AmbigDocs test, AmbiEnt, tokenizer, tokenize) peak RSS 526 MB, 4.4 s on CPU.
   - commit: 251d5ac; files: none
 
-- User approved the sample format; AmbigDocs cues stay as era/production hints that rely on model world knowledge; explanations must not contain the answer. `scripts/check_ambig_items.py` validates `data/ambig_rag/*.jsonl`: errors on unequal token lengths (prefix `Note on the retrieved document: ` + explanation A/B/unrelated/paraphrase; documents with cue A/B), lead+span tokens changing when a cue is appended, option text or shared content words (>=4 letters, non-stopword, not in span/question) in explanations, cue text in explanations, per-type count != 15, fewer than 5 paraphrased explanations per type; warnings on unrelated-sentence word overlap, edited AmbiEnt spans, options not found in AmbigDocs answers/titles. Four subagents author lexical, structural, pragmatic, entity files in parallel.
-  - commit: 76e0cab; files: scripts/check_ambig_items.py, data/ambig_rag
-
-- 60 items written by four subagents (`data/ambig_rag/{lexical,structural,pragmatic,entity}.jsonl`); `scripts/check_ambig_items.py` reports `60 items, 0 errors, 0 warnings`. Option-text check uses word boundaries (substring matching rejected "not"/"know" for option "No"). Generator sources for each file are in the session scratchpad (`lex_items.py`, `str/build.py`, `items.py`, `ent/items.py`), not in the repo. Weak items found on review: lex-04 ("not well off" leans to the money reading without a cue), str-10 (ambiguity depends on reading "flaunts" as "flouts"), prag-06 (cue B is about never having tried food trucks, not about liking them); strong cues: lex-03, lex-09, lex-15, str-06, str-07, prag-02, prag-07, ent-11 (kimchi); no-cue bias expected: str-04, str-12, str-14. Unrelated sentence duplicated in lex-02 and str-11. Explanations start lowercase in lexical/entity/pragmatic and uppercase in structural.
-  - commit: 76e0cab; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl, scripts/check_ambig_items.py
+- User approved the sample format; AmbigDocs cues stay as era/production/place hints that rely on model world knowledge; explanations must not contain the answer. `scripts/check_ambig_items.py` validates `data/ambig_rag/*.jsonl`: errors on unequal token lengths (prefix `Note on the retrieved document: ` + explanation A/B/unrelated/paraphrase; documents with cue A/B), lead+span tokens changing when a cue is appended, option text (word-boundary match) or shared content words (>=4 letters, non-stopword, not in span/question) in explanations, cue text in explanations, per-type count != 15, fewer than 5 paraphrased explanations per type; warnings on unrelated-sentence word overlap, AmbiEnt spans matching none of the sentences under that id, options not found in AmbigDocs answers/titles.
+  - commit: e067e4b; files: scripts/check_ambig_items.py
+- 60 items in `data/ambig_rag/{lexical,structural,pragmatic,entity}.jsonl`, written by four subagents; generator sources are in the session scratchpad (`lex_items.py`, `str/build.py`, `items.py`, `ent/items.py`), not in the repo. Expected no-cue bias: str-04, str-12, str-14. Explanations start lowercase in lexical/entity/pragmatic and uppercase in structural.
+  - commit: e067e4b; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl
+- Revisions on user request: replaced lex-04 (hand-made "letter": message vs alphabet character), str-10 (AmbiEnt 138_c "Alice said that Bob studied Spanish, and Charlie did too.", from test.jsonl), prag-06 (Circa row 1859 "Want to try a trendy new place?" / "I'm not bothered by fashion places."); weakened cues of lex-03, lex-09, lex-15, str-06, str-07, prag-02, prag-07, ent-11 (now monsoon rains / tornado sirens); reworded prag-05 explanation A; lex-02 unrelated sentence made unique. Diff against e067e4b touches only these 13 items. AmbiEnt reuses some ids for different sentences across `test.jsonl`, `dev.jsonl`, and `analysis/category_annotations.jsonl` (e.g. 93_c, 131_c, reported by the structural subagent), so the checker now keeps every candidate per id. Remaining weak spots reported by subagents: str-10 cue B (Charlie watched Bob do homework) may also suggest Charlie studied; lex-04 cue B ("curly tail") is indirect. Checker: `60 items, 0 errors, 0 warnings`, no duplicate unrelated sentences.
+  - commit: e067e4b; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl, scripts/check_ambig_items.py
 
 ### Next Step
-- User review of the 60 items; then the prompt builder (system / explanation position / document / question, option-order swap, closed-book and cue-less variants) with a check that document-span tokens are identical across conditions.
-  - commit: 76e0cab; files: data/ambig_rag, scripts/check_ambig_items.py
+- User review of the revised items; then the prompt builder (system / explanation position / document / question, option-order swap, closed-book and cue-less variants) with a check that document-span tokens are identical across conditions.
+  - commit: e067e4b; files: data/ambig_rag, scripts/check_ambig_items.py
 
 ### Constraints
+- "1,2 모두 진행해."
+  - source: user prompt, this session (replace lex-04, str-10, prag-06; weaken strong cues)
 - "1. ㅇㅇ 2. 이대로 둬 3. 정답은 빼자."
   - source: user prompt, this session (format approved; AmbigDocs cue as is; no answer in explanations)
 - "이 worktree에서 진행"
@@ -85,3 +88,7 @@ commit: 76e0caba323b876d2b086008433cd815627562d0
 > 1. ㅇㅇ
 > 2. 이대로 둬
 > 3. 정답은 빼자.
+
+#### 4 — 2026-11-07T01:53:48Z
+
+> 1,2 모두 진행해. 

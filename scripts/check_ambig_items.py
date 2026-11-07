@@ -36,11 +36,12 @@ def doc(it, cue):
 
 
 def sources():
+    # The same AmbiEnt id can name different sentences in different files, so keep every candidate.
     amb = {}
     for f in ("test.jsonl", "dev.jsonl", "analysis/category_annotations.jsonl"):
         for line in open(RAW / "ambient-github/AmbiEnt" / f):
             r = json.loads(line)
-            amb[str(r["id"])] = r
+            amb.setdefault(str(r["id"]), []).append(r)
     ad = {str(x["qid"]): x for x in json.load(open(RAW / "AmbigDocs/test.json"))}
     return amb, ad
 
@@ -103,10 +104,10 @@ def check(items, tok, amb, ad):
 
         src = it["source"]
         if m := re.match(r"AmbiEnt (\S+)", src):
-            r = amb.get(m.group(1))
-            if r is None:
+            rs = amb.get(m.group(1))
+            if rs is None:
                 E(f"AmbiEnt id {m.group(1)} not found")
-            elif it["span"] not in (r["premise"], r["hypothesis"]):
+            elif not any(it["span"] in (r["premise"], r["hypothesis"]) for r in rs):
                 W("span differs from the AmbiEnt premise/hypothesis (edited)")
         elif m := re.match(r"AmbigDocs test qid (\d+)", src):
             x = ad.get(m.group(1))
