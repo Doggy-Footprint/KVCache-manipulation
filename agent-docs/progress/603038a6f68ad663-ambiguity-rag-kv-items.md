@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: e067e4b5b2cdee7f702dd3297c050f9b3e678cc0
+commit: 168b75e57e88610d5ae78fa25918a00c9f854388
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -22,17 +22,22 @@ commit: e067e4b5b2cdee7f702dd3297c050f9b3e678cc0
   - commit: 251d5ac; files: none
 
 - User approved the sample format; AmbigDocs cues stay as era/production/place hints that rely on model world knowledge; explanations must not contain the answer. `scripts/check_ambig_items.py` validates `data/ambig_rag/*.jsonl`: errors on unequal token lengths (prefix `Note on the retrieved document: ` + explanation A/B/unrelated/paraphrase; documents with cue A/B), lead+span tokens changing when a cue is appended, option text (word-boundary match) or shared content words (>=4 letters, non-stopword, not in span/question) in explanations, cue text in explanations, per-type count != 15, fewer than 5 paraphrased explanations per type; warnings on unrelated-sentence word overlap, AmbiEnt spans matching none of the sentences under that id, options not found in AmbigDocs answers/titles.
-  - commit: e067e4b; files: scripts/check_ambig_items.py
+  - commit: 168b75e; files: scripts/check_ambig_items.py
 - 60 items in `data/ambig_rag/{lexical,structural,pragmatic,entity}.jsonl`, written by four subagents; generator sources are in the session scratchpad (`lex_items.py`, `str/build.py`, `items.py`, `ent/items.py`), not in the repo. Expected no-cue bias: str-04, str-12, str-14. Explanations start lowercase in lexical/entity/pragmatic and uppercase in structural.
-  - commit: e067e4b; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl
+  - commit: 168b75e; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl
 - Revisions on user request: replaced lex-04 (hand-made "letter": message vs alphabet character), str-10 (AmbiEnt 138_c "Alice said that Bob studied Spanish, and Charlie did too.", from test.jsonl), prag-06 (Circa row 1859 "Want to try a trendy new place?" / "I'm not bothered by fashion places."); weakened cues of lex-03, lex-09, lex-15, str-06, str-07, prag-02, prag-07, ent-11 (now monsoon rains / tornado sirens); reworded prag-05 explanation A; lex-02 unrelated sentence made unique. Diff against e067e4b touches only these 13 items. AmbiEnt reuses some ids for different sentences across `test.jsonl`, `dev.jsonl`, and `analysis/category_annotations.jsonl` (e.g. 93_c, 131_c, reported by the structural subagent), so the checker now keeps every candidate per id. Remaining weak spots reported by subagents: str-10 cue B (Charlie watched Bob do homework) may also suggest Charlie studied; lex-04 cue B ("curly tail") is indirect. Checker: `60 items, 0 errors, 0 warnings`, no duplicate unrelated sentences.
-  - commit: e067e4b; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl, scripts/check_ambig_items.py
+  - commit: 168b75e; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl, scripts/check_ambig_items.py
+
+- Prompt builder `src/kvmeaning/ambig.py`: hand-rendered ChatML with segment-wise tokenization (as in `spans.py`); system / [explanation pre] / `Retrieved document:` + lead, span, cue / [explanation post] / question, options `A. …\nB. …`, `Answer with A or B.`; conditions none, A_pre, A_post, B_pre, B_post, U_pre (+ pA/pB pre/post for items with `expl_para`) × cue A/B/none × option order AB/BA, plus closed-book (no document, 2 orders). Relation labels correct/wrong/cueless/unrelated/none/closed; `gold` is the display letter of the cue's reading. `python -m kvmeaning.ambig` with the 4B tokenizer: 60 items, 2856 prompts, 44–130 tokens each, 305614 tokens total; 0 alignment violations (document tokens identical across conditions, equal document positions within pre and within non-pre conditions, non-pre prompts identical to `none` up to document end, lead+span identical across cues); 0 items where segment-wise document ids differ from tokenizing the joined text; letters A and B are single tokens.
+  - commit: 168b75e; files: src/kvmeaning/ambig.py, tests/tiny/test_ambig.py
 
 ### Next Step
-- User review of the revised items; then the prompt builder (system / explanation position / document / question, option-order swap, closed-book and cue-less variants) with a check that document-span tokens are identical across conditions.
-  - commit: e067e4b; files: data/ambig_rag, scripts/check_ambig_items.py
+- Extraction runner for the ambiguity-RAG prompts on local MPS (Qwen3-4B, pinned Q3-4B): forced-choice logits at the answer position, K/V/residual of document spans, attention from the answer position to explanation vs cue; then a 0.6B pipeline check and a pilot on a few items. Generation-vs-forced-choice agreement on a subset is still open.
+  - commit: 168b75e; files: src/kvmeaning/ambig.py, src/kvmeaning/extract.py, src/kvmeaning/reading.py
 
 ### Constraints
+- "진행"
+  - source: user prompt, this session (build the prompt builder)
 - "1,2 모두 진행해."
   - source: user prompt, this session (replace lex-04, str-10, prag-06; weaken strong cues)
 - "1. ㅇㅇ 2. 이대로 둬 3. 정답은 빼자."
@@ -47,7 +52,10 @@ commit: e067e4b5b2cdee7f702dd3297c050f9b3e678cc0
   - source: AskUserQuestion answer, this session (main run)
 
 ### Verify
-- none: no code changed yet in this session.
+- `HF_HUB_OFFLINE=1 uv run --offline python scripts/check_ambig_items.py` prints `60 items, 0 errors, 0 warnings`.
+  - commit: 168b75e; files: scripts/check_ambig_items.py, data/ambig_rag
+- `HF_HUB_OFFLINE=1 uv run --offline pytest tests/tiny -q -p no:cacheprovider`: 362 passed, 12 skipped (test_ambig.py 9 passed); `HF_HUB_OFFLINE=1 uv run --offline python -m kvmeaning.ambig` exits 0 with 0 alignment violations.
+  - commit: 168b75e; files: tests/tiny/test_ambig.py, src/kvmeaning/ambig.py
 
 ### Dead Ends
 - none: nothing tried yet.
@@ -92,3 +100,7 @@ commit: e067e4b5b2cdee7f702dd3297c050f9b3e678cc0
 #### 4 — 2026-11-07T01:53:48Z
 
 > 1,2 모두 진행해. 
+
+#### 5 — 2026-11-07T02:25:37Z
+
+> 진행
