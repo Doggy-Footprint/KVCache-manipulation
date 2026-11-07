@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 168b75e57e88610d5ae78fa25918a00c9f854388
+commit: 1fa2cf40612ed842916cb221badb59f30e43f4c9
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -28,14 +28,23 @@ commit: 168b75e57e88610d5ae78fa25918a00c9f854388
 - Revisions on user request: replaced lex-04 (hand-made "letter": message vs alphabet character), str-10 (AmbiEnt 138_c "Alice said that Bob studied Spanish, and Charlie did too.", from test.jsonl), prag-06 (Circa row 1859 "Want to try a trendy new place?" / "I'm not bothered by fashion places."); weakened cues of lex-03, lex-09, lex-15, str-06, str-07, prag-02, prag-07, ent-11 (now monsoon rains / tornado sirens); reworded prag-05 explanation A; lex-02 unrelated sentence made unique. Diff against e067e4b touches only these 13 items. AmbiEnt reuses some ids for different sentences across `test.jsonl`, `dev.jsonl`, and `analysis/category_annotations.jsonl` (e.g. 93_c, 131_c, reported by the structural subagent), so the checker now keeps every candidate per id. Remaining weak spots reported by subagents: str-10 cue B (Charlie watched Bob do homework) may also suggest Charlie studied; lex-04 cue B ("curly tail") is indirect. Checker: `60 items, 0 errors, 0 warnings`, no duplicate unrelated sentences.
   - commit: 168b75e; files: data/ambig_rag/lexical.jsonl, data/ambig_rag/structural.jsonl, data/ambig_rag/pragmatic.jsonl, data/ambig_rag/entity.jsonl, scripts/check_ambig_items.py
 
-- Prompt builder `src/kvmeaning/ambig.py`: hand-rendered ChatML with segment-wise tokenization (as in `spans.py`); system / [explanation pre] / `Retrieved document:` + lead, span, cue / [explanation post] / question, options `A. …\nB. …`, `Answer with A or B.`; conditions none, A_pre, A_post, B_pre, B_post, U_pre (+ pA/pB pre/post for items with `expl_para`) × cue A/B/none × option order AB/BA, plus closed-book (no document, 2 orders). Relation labels correct/wrong/cueless/unrelated/none/closed; `gold` is the display letter of the cue's reading. `python -m kvmeaning.ambig` with the 4B tokenizer: 60 items, 2856 prompts, 44–130 tokens each, 305614 tokens total; 0 alignment violations (document tokens identical across conditions, equal document positions within pre and within non-pre conditions, non-pre prompts identical to `none` up to document end, lead+span identical across cues); 0 items where segment-wise document ids differ from tokenizing the joined text; letters A and B are single tokens.
-  - commit: 168b75e; files: src/kvmeaning/ambig.py, tests/tiny/test_ambig.py
+- Prompt builder `src/kvmeaning/ambig.py`: hand-rendered ChatML with segment-wise tokenization (as in `spans.py`); system / [explanation pre] / `Retrieved document:` + lead, span, cue / [explanation post] / question, options `A. …\nB. …`, `Answer with A or B.`; conditions none, A_pre, A_post, B_pre, B_post, U_pre (+ pA/pB pre/post for items with `expl_para`) × cue A/B/none × option order AB/BA, plus closed-book (no document, 2 orders). Relation labels correct/wrong/cueless/unrelated/none/closed; `gold` is the display letter of the cue's reading. before `U2_pre` was added, `python -m kvmeaning.ambig` with the 4B tokenizer gave 60 items, 2856 prompts, 44–130 tokens each, 305614 tokens total; 0 alignment violations (document tokens identical across conditions, equal document positions within pre and within non-pre conditions, non-pre prompts identical to `none` up to document end, lead+span identical across cues); 0 items where segment-wise document ids differ from tokenizing the joined text; letters A and B are single tokens.
+  - commit: 1fa2cf4; files: src/kvmeaning/ambig.py, tests/tiny/test_ambig.py
+
+- Noise-floor condition `U2_pre` added: a second length-matched unrelated sentence, taken from the next item (cyclic, file order) with equal `PRE + unrelated` token length; ent-06 and ent-10 had no such donor and carry hand-written `unrelated2` in `data/ambig_rag/entity.jsonl` (checker enforces its length). Builder now gives 3216 prompts, 345850 tokens, 0 alignment violations.
+  - commit: 1fa2cf4; files: src/kvmeaning/ambig.py, data/ambig_rag/entity.jsonl, scripts/check_ambig_items.py
+- Runner `src/kvmeaning/ambig_run.py` (`python -m kvmeaning.ambig_run --model Q3-4B --run-dir <dir>`; resumable per item; exits 3 below 10 GB free): batch size 1; per item writes `items/<id>.safetensors` + `.json` (json renamed last; `rows` = per-prompt forced-choice log-probs of letters A/B, top token, relation, gold, spans, seconds). Tensors: `dist.<cue A|B|N>.<order>.<x>|<y>.<repr>.<l2|cos>` per document token (`stats.tokdist`, scale = mean token norm of x), pairs in `PAIRS` (U_pre|U2_pre floor, U_pre|A_pre, U_pre|B_pre, A_pre|B_pre, paraphrase pairs, none|A_post and none|B_post sanity, none|*_pre cross-position); `attn.<cue>.<order>.<cond>.<answer|doc>.<span>` = attention mass [kv layer, query head] from the answer position (or mean over document rows) to expl/lead/span/cue/question/sink. Raw fp16 captures (v, k_pre, k_post, resid, logits_last; all tokens) for order AB of lex-01, lex-02, str-01, str-02, prag-01, prag-02, ent-01, ent-02 under `raw/<id>/<cue>_<order>_<cond>`. A first version keyed raw files with dots and `store.save`'s `with_suffix` collapsed them into one file per cue (caught by `tests/tiny/test_ambig_run.py`).
+  - commit: 1fa2cf4; files: src/kvmeaning/ambig_run.py, tests/tiny/test_ambig_run.py
+- 4B pilot (`runs/ambig/pilot-4B`, git-ignored; lex-01, prag-07; 2026-11-08 04:07 KST): 39–42 s per item (68 prompts), max RSS 846 MB for the process, items 23 MB, raw 1.4 GB for one raw item. Choices are consistent under option-order swap. lex-01: without explanation always the 'person' reading regardless of cue; with explanation follows the explanation whether correct or wrong. prag-07: mostly 'No'; post explanations flip some. Sanity none|A_post: lex-01 exactly 0; prag-07 max 0.022 (v l2), mean 7e-5. resid l2 mean: U_pre|U2_pre 0.11–0.13 vs U_pre|A_pre 0.22–0.25. `Qwen/Qwen3-0.6B` weights are not cached (tokenizer only), so the 0.6B check was skipped; tiny-model tests cover the pipeline.
+  - commit: 1fa2cf4; files: src/kvmeaning/ambig_run.py
 
 ### Next Step
-- Extraction runner for the ambiguity-RAG prompts on local MPS (Qwen3-4B, pinned Q3-4B): forced-choice logits at the answer position, K/V/residual of document spans, attention from the answer position to explanation vs cue; then a 0.6B pipeline check and a pilot on a few items. Generation-vs-forced-choice agreement on a subset is still open.
-  - commit: 168b75e; files: src/kvmeaning/ambig.py, src/kvmeaning/extract.py, src/kvmeaning/reading.py
+- Main run `runs/ambig/main` (all 60 items, Q3-4B, MPS) launched with caffeinate; on completion check `runs/ambig/main/log.txt` and the 60 item files, then analysis (choice rates per relation/type/position, distances relative to the U_pre|U2_pre floor, answer-position attention to explanation vs cue). Generation-vs-forced-choice agreement on a subset is still open.
+  - commit: 1fa2cf4; files: src/kvmeaning/ambig_run.py
 
 ### Constraints
+- "1번으로 진행해. 자고 올게"
+  - source: user prompt, this session (store distance stats online, raw for a subset; run overnight unattended)
 - "진행"
   - source: user prompt, this session (build the prompt builder)
 - "1,2 모두 진행해."
@@ -54,8 +63,8 @@ commit: 168b75e57e88610d5ae78fa25918a00c9f854388
 ### Verify
 - `HF_HUB_OFFLINE=1 uv run --offline python scripts/check_ambig_items.py` prints `60 items, 0 errors, 0 warnings`.
   - commit: 168b75e; files: scripts/check_ambig_items.py, data/ambig_rag
-- `HF_HUB_OFFLINE=1 uv run --offline pytest tests/tiny -q -p no:cacheprovider`: 362 passed, 12 skipped (test_ambig.py 9 passed); `HF_HUB_OFFLINE=1 uv run --offline python -m kvmeaning.ambig` exits 0 with 0 alignment violations.
-  - commit: 168b75e; files: tests/tiny/test_ambig.py, src/kvmeaning/ambig.py
+- `HF_HUB_OFFLINE=1 uv run --offline pytest tests/tiny -q -p no:cacheprovider`: 364 passed, 12 skipped (test_ambig.py 9, test_ambig_run.py 2); `HF_HUB_OFFLINE=1 uv run --offline python -m kvmeaning.ambig` exits 0 with 0 alignment violations.
+  - commit: 1fa2cf4; files: tests/tiny/test_ambig.py, src/kvmeaning/ambig.py
 
 ### Dead Ends
 - none: nothing tried yet.
@@ -104,3 +113,19 @@ commit: 168b75e57e88610d5ae78fa25918a00c9f854388
 #### 5 — 2026-11-07T02:25:37Z
 
 > 진행
+
+#### 6 — 2026-11-07T02:34:32Z
+
+> 1번으로 진행해
+
+#### 7 — 2026-11-07T19:00:31Z
+
+> 1번 진행하는데 얼마나 걸려? 자기전에 돌리고 자려는데
+
+#### 8 — 2026-11-07T19:01:20Z
+
+> 자기 전이라 추산해서 알려줘
+
+#### 9 — 2026-11-07T19:03:28Z
+
+> 1번으로 진행해. 자고 올게

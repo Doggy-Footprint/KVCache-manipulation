@@ -28,12 +28,13 @@ CONDS = {
     "none": Cond(None, None),
     "A_pre": Cond("A", "pre"), "A_post": Cond("A", "post"),
     "B_pre": Cond("B", "pre"), "B_post": Cond("B", "post"),
-    "U_pre": Cond("U", "pre"),
+    "U_pre": Cond("U", "pre"), "U2_pre": Cond("U2", "pre"),
 }
 PARA_CONDS = {
     "pA_pre": Cond("A", "pre", True), "pA_post": Cond("A", "post", True),
     "pB_pre": Cond("B", "pre", True), "pB_post": Cond("B", "post", True),
 }
+ALL = {**CONDS, **PARA_CONDS}
 
 
 @dataclass
@@ -60,7 +61,7 @@ def letters(order: str) -> dict[str, str]:
 def relation(cond: Cond, cue: str | None) -> str:
     if cond.expl is None:
         return "none"
-    if cond.expl == "U":
+    if cond.expl in ("U", "U2"):
         return "unrelated"
     if cue is None:
         return "cueless"
@@ -68,8 +69,8 @@ def relation(cond: Cond, cue: str | None) -> str:
 
 
 def _expl_text(item: dict, cond: Cond) -> str:
-    if cond.expl == "U":
-        return PRE + item["unrelated"]
+    if cond.expl in ("U", "U2"):
+        return PRE + item["unrelated" if cond.expl == "U" else "unrelated2"]
     return PRE + item["expl_para" if cond.para else "expl"][cond.expl]
 
 
@@ -123,10 +124,26 @@ def _gold(cue: str | None, order: str) -> str | None:
     return next(d for d, r in letters(order).items() if r == cue)
 
 
+def with_unrelated2(tok, items: list[dict]) -> list[dict]:
+    # The second filler is another item's unrelated sentence of equal token length, so that
+    # U_pre vs U2_pre is a filler-vs-filler noise floor at matched positions.
+    n = {it["id"]: len(_ids(tok, PRE + it["unrelated"])) for it in items}
+    ids = [it["id"] for it in items]
+    out = []
+    for k, it in enumerate(items):
+        if "unrelated2" not in it:
+            donor = next((items[(k + j) % len(items)] for j in range(1, len(items))
+                          if n[ids[(k + j) % len(items)]] == n[it["id"]]), None)
+            if donor is not None:
+                it = {**it, "unrelated2": donor["unrelated"], "unrelated2_from": donor["id"]}
+        out.append(it)
+    return out
+
+
 def build(tok, items: list[dict], para: bool = True, closed: bool = True) -> list[Prompt]:
     out = []
-    for it in items:
-        conds = dict(CONDS)
+    for it in with_unrelated2(tok, items):
+        conds = {k: c for k, c in CONDS.items() if k != "U2_pre" or "unrelated2" in it}
         if para and "expl_para" in it:
             conds.update(PARA_CONDS)
         for cue in CUES:
@@ -161,11 +178,11 @@ def check(prompts: list[Prompt]) -> list[str]:
         doc = {n: e.ids[slice(*e.spans["doc"])] for n, e in encs.items()}
         if len({tuple(v) for v in doc.values()}) != 1:
             errs.append(f"{key}: document tokens differ across conditions")
-        for group in ([n for n in encs if CONDS.get(n, PARA_CONDS.get(n)).pos == "pre"],
-                      [n for n in encs if CONDS.get(n, PARA_CONDS.get(n)).pos != "pre"]):
+        for group in ([n for n in encs if ALL[n].pos == "pre"],
+                      [n for n in encs if ALL[n].pos != "pre"]):
             if len({encs[n].spans["doc"] for n in group}) > 1:
                 errs.append(f"{key}: document positions differ within {group}")
-        post = [n for n in encs if CONDS.get(n, PARA_CONDS.get(n)).pos != "pre"]
+        post = [n for n in encs if ALL[n].pos != "pre"]
         end = encs["none"].spans["doc"][1]
         if any(encs[n].ids[:end] != encs["none"].ids[:end] for n in post):
             errs.append(f"{key}: prompts without a preceding explanation differ before the document ends")

@@ -73,6 +73,8 @@ def check(items, tok, amb, ad):
         lu = n(PRE + it["unrelated"])
         if not (le["A"] == le["B"] == lu):
             E(f"explanation lengths A={le['A']} B={le['B']} unrelated={lu} must be equal")
+        if "unrelated2" in it and n(PRE + it["unrelated2"]) != lu:
+            E(f"unrelated2 length {n(PRE + it['unrelated2'])} must equal {lu}")
         if "expl_para" in it:
             lp = {k: n(PRE + it["expl_para"][k]) for k in "AB"}
             if not (lp["A"] == lp["B"] == le["A"]):
