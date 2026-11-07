@@ -1,8 +1,3 @@
-"""Prompt builder for the ambiguity-RAG experiment over data/ambig_rag/*.jsonl.
-
-Layout: system / [explanation] / document (lead, span, cue) / [explanation] / question + options.
-"""
-
 import argparse
 import json
 from collections import Counter
