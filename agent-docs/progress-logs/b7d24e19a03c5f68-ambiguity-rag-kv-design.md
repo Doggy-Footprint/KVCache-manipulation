@@ -3,7 +3,7 @@ session: 997adeda-46be-4f41-966d-92e76059b54c
 before: agent-docs/progress-logs/44e4969673aa5c75-exp1-100-passages-local-4b.md
 previous: none
 branch: worktree-exp-ambiguity-icl
-commit: e09300e207ee2b25b5172fbf22c96a90f9800358
+commit: a8390e8a8d3402f1501bebda03e879e239b67318
 ---
 
 # Ambiguity in RAG documents: explanation conditions vs KV cache (design stage)
@@ -44,8 +44,6 @@ commit: e09300e207ee2b25b5172fbf22c96a90f9800358
 - none: no experiment run yet in this worktree.
 
 ### Related
-- agent-docs/todos/c4e81a7f2d90b356-harness-hooks-worktree-root.md (Stop hook misses a progress written inside a worktree)
-  - commit: 68e9763; files: agent-docs/todos/c4e81a7f2d90b356-harness-hooks-worktree-root.md, agent-docs/todos/index.md
 - agent-docs/progress-logs/44e4969673aa5c75-exp1-100-passages-local-4b.md
   - commit: 68e9763; files: agent-docs/progress-logs/44e4969673aa5c75-exp1-100-passages-local-4b.md
 
@@ -57,7 +55,7 @@ commit: e09300e207ee2b25b5172fbf22c96a90f9800358
 - Committed `notebooks/kv_reading.ipynb` (executed, 1.1 MB; output contains two IPython warning paths under the local .venv) and `figures/kv_reading/` (8 PNG, 1.1 MB) on `main` at the user's request ("커밋"). These are the earlier KV-reading results: same-word KV distance, attention maps, V→vocab lens differences, KV Patchscope tables and layer sweep on Qwen3-4B, n=1 sentence per condition.
 - `.gitignore` gains `.claude/worktrees/`: without it the main checkout sees worktree files as untracked, and the harness counts worktree edits as main-checkout changes (see the harness todo).
 - Moved the previous session's progress (44e4969673aa5c75) to `agent-docs/progress-logs/` unchanged, at the user's request; its content was not edited (a session edits only its own progress).
-- Added todo `agent-docs/todos/c4e81a7f2d90b356-harness-hooks-worktree-root.md` and its index entry in this worktree; writing it to the main checkout path was refused by worktree isolation.
+- Added todo `agent-docs/todos/c4e81a7f2d90b356-harness-hooks-worktree-root.md` and its index entry in this worktree; writing it to the main checkout path was refused by worktree isolation. Later deleted (not marked stale) at the user's request ("hook - 이건 지워 (stale 말고 지워. 재발하면 다시 볼게.)"); its content is in commit 1436458.
 
 ### Commands
 - `HF_HUB_OFFLINE=1 uv run --offline pytest tests/tiny/test_reading.py -q -p no:cacheprovider` → 4 passed.
@@ -148,3 +146,8 @@ commit: e09300e207ee2b25b5172fbf22c96a90f9800358
 #### 14 — 2026-11-07T00:02:14Z
 
 > 실험은 새로운 worktree에서 할 거니까 지워도 돼
+
+#### 15 — 2026-11-07T00:08:00Z
+
+> hook - 이건 지워 (stale 말고 지워. 재발하면 다시 볼게.)
+> ㅇ우리가 디자인한 실험은 어떤 todo 봐야해?
