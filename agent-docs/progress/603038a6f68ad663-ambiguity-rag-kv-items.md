@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: e3c60eed0caa950de0bc263bc9d649a2b2c76b9d
+commit: 395ee54656e5b2a28a97df491ba88382ad7d8708
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -61,11 +61,16 @@ commit: e3c60eed0caa950de0bc263bc9d649a2b2c76b9d
 - KV surgery: `src/kvmeaning/kv_surgery.py` (drop_span, rerope, close_gap, splice, readout_batch with padding-mask hiding; tiny tests `tests/tiny/test_kv_surgery.py`, 5 passed) and `scripts/ambig_kv_surgery.py`. For each item × cue × order, A_pre/B_pre/U_pre caches are prefilled up to the document end (equal length; ids outside the explanation span identical, asserted); cells: explanation slot A/B/U/masked × document block [expl end, doc end) from A/B/U (12), header (`\n\nRetrieved document:\n`) vs body splice from A/B into U with explanation masked or U visible (8), document block from A/B into U by layer band 0–11/12–23/24–35 with explanation masked (6), A/B document with top-1/2/4/8 most V-deviating block tokens (vs U) or 4 random tokens replaced by U (10), explanation removed and gap closed by re-RoPE (3), plus the no-explanation prompt. Pilot (lex-01, 6 groups): rebuilt original cells differ from the main run by at most 1.0 in margin (bf16, prefill+suffix split); no-explanation prompt matches exactly; per-group time grew from 16 s to 150 s until `torch.mps.empty_cache()` per group and batches of 12 were added (then about 11 s per group). Full run `runs/ambig/surgery/cells.jsonl` (git-ignored; 360 groups, about 47 min, exit 0); `scripts/ambig_kv_surgery_report.py` output in `runs/ambig/surgery/summary.txt`. Checks: rebuilt original vs main run margin median 0.13, max 2.50; gap closed by re-RoPE vs masked median 0.38, max 4.37; unrelated sentence masked vs visible median 1.00; unrelated-sentence prompt vs no-explanation prompt median 1.75, max 38.50 (layouts differ; mainly cue-less lexical groups). Explanation effect (median over items; ALL / lexical / structural / pragmatic / entity): full 4.17 / 13.62 / 4.17 / 4.22 / 1.75; trace only (explanation masked) 1.01 / 7.70 / 1.05 / 0.83 / 0.31; direct only (document KV from the unrelated-sentence run) 1.82 / 3.99 / 1.82 / 1.31 / 1.64; share of full (items with |full| > 2) trace 0.25 / 0.74 / 0.20 / 0.25 / 0.10, direct 0.46 / 0.38 / 0.54 / 0.42 / 0.43. Trace by part: header tokens 0.07, body 0.68 (lexical 7.47); by layer band with explanation masked: 0–11 0.02, 12–23 0.81 (lexical 9.69), 24–35 0.00. Repair of the A/B document by replacing its most V-deviating block tokens with the unrelated-run values: trace left top1 0.77, top2 0.54, top4 0.32, top8 -0.00, random 4 tokens 1.04 (lexical 2.66 / 1.03 / 0.16 / 0.14 / 6.03). The most-deviating token is the `\n\n` header token in 194 of 720 cases. Visible text vs conflicting document trace: 2.27 toward the visible text. Rate of answering with the explanation's reading (0.5 = same answer under A and B): full 0.65, trace only 0.57, direct only 0.57, repair top4 0.51, random 4 0.55.
   - commit: 64fb888; files: src/kvmeaning/kv_surgery.py, scripts/ambig_kv_surgery.py, scripts/ambig_kv_surgery_report.py
 
+- Instruction-injection experiment, screening: `data/inject/screen.json` (10 Python tasks; 6 kinds, each a system rule plus a contradicting mid-prompt "Reviewer note"), `src/kvmeaning/inject.py` (segment-wise prompt: system rule / task line / injection / requirements + example + assistant header; `measure` per kind), `scripts/inject_screen.py` (batched greedy, 200 new tokens). Run `runs/inject/screen.jsonl` (git-ignored; 120 generations, about 14 min). Rule violated in clean / contaminated prompts: comments 0/10 vs 10/10 (mean 6.3 comment lines), print 0/10 vs 9/10, javascript 0/10 vs 10/10, type_hints 0/10 vs 10/10, docstring 2/10 vs 10/10, camelcase 0/10 vs 0/10. `kv_surgery.greedy` (cache-based greedy with masked spans kept through generation and explicit positions) added; tiny tests 7 passed.
+  - commit: 395ee54; files: data/inject/screen.json, src/kvmeaning/inject.py, scripts/inject_screen.py, src/kvmeaning/kv_surgery.py
+
 ### Next Step
-- Report the KV surgery results; no further task chosen by the user.
-  - commit: e3c60ee; files: scripts/ambig_kv_surgery_report.py
+- Report screening and the main-run design (contaminated / clean re-prefill / mask / drop + re-RoPE / drop + re-RoPE + recompute last m tokens / neutral-sentence removal control) with its time estimate; wait for the user's go.
+  - commit: 395ee54; files: scripts/inject_screen.py
 
 ### Constraints
+- "새로운 실험 - 중간에 삽입된 instruction을 지우는 실험을 해보자."
+  - source: user prompt, this session (pasted plan: contaminated control, clean re-prefill, KV manipulation without prefill; find a contamination case whose removal is visible first)
 - "1~3까지 한 번에 돌려"
   - source: user prompt, this session (KV surgery: factorial plus header/body split, layer bands, partial repair)
 - "시간 2시간 이하는 계속 진행해. 결과만 잘 남겨두고"
@@ -349,4 +354,39 @@ commit: e3c60eed0caa950de0bc263bc9d649a2b2c76b9d
 > <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bvtxezdha.output</output-file>
 > <status>completed</status>
 > <summary>Background command "Run full KV surgery experiment in background" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 40 — 2026-11-08T14:24:37Z
+
+> ㅇㅇ 추가해줘
+
+#### 41 — 2026-11-08T14:37:02Z
+
+> 
+> 
+> <pasted_content id="4802">
+> 새로운 실험 - 중간에 삽입된 instruction을 지우는 실험을 해보자.
+> 
+>   간단한 코딩 태스크, 초기에 "주석을 작성하지 말것", 중간에 "주석으로 설명을 남길 것"을 넣어서
+>   컨텍스트를 오염시키고
+> 
+>   1. 대조군 - 주석이 남는 것을 보면 됨
+>   2. 해당 "주석으로 설명을 남길 것"을 뺀 context (짧아짐)로 prefill을 다시하여 오염을 제거한 것
+>   3. KVCache를 조작하여 prefill없이 오염을 제거하는 것
+> 
+>   ---
+> 
+>   위의 주석은 예시고, 적당한 오염 사례를 찾는 게 선행되어야 함. 특히 삭제의 결과가 잘 드러나는 게
+>   좋음
+> </pasted_content id="4802">
+> 
+
+#### 42 — 2026-11-08T14:53:03Z
+
+> <task-notification>
+> <task-id>b2ugjebjo</task-id>
+> <tool-use-id>toolu_01TUmy3YK3whXADqzxYn5eaj</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/b2ugjebjo.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Run screening for remaining contamination kinds" completed (exit code 0)</summary>
 > </task-notification>

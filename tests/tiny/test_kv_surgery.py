@@ -59,3 +59,28 @@ def test_batched_readout_and_splice_match_single_rows():
     assert torch.allclose(batch[2], _direct(model, b + SUFFIX), atol=1e-4)
     assert torch.equal(mixed.layers[0].keys, ca.layers[0].keys)
     assert torch.equal(mixed.layers[1].keys[:, :, 4:9], cb.layers[1].keys[:, :, 4:9])
+
+
+def _greedy_full(model, ids, n):
+    out = []
+    for _ in range(n):
+        out.append(int(_direct(model, ids + out).argmax()))
+    return out
+
+
+def test_greedy_from_cache_matches_full_recompute():
+    model = H.get_model("dense", 1.0)
+    ids = H.rand_ids(12, 7)[0].tolist()
+    got = S.greedy(model, P.prefill(model, ids[:-1]), ids[-1:], 6)
+    assert got == _greedy_full(model, ids, 6)
+
+
+def test_greedy_with_masked_span_equals_dropped_span_with_gap():
+    model = H.get_model("dense", 1.0)
+    ids = H.rand_ids(14, 8)[0].tolist()
+    cache = P.prefill(model, ids[:-1])
+    masked = S.greedy(model, cache, ids[-1:], 6, masked=[(4, 8)])
+    dropped = S.greedy(model, S.drop_span(cache, (4, 8)), ids[-1:], 6, start_pos=13)
+    assert masked == dropped
+    closed = S.greedy(model, S.close_gap(model, P.prefill(model, ids[:4]), (4, 4)), ids[4:5], 3)
+    assert closed == _greedy_full(model, ids[:5], 3)

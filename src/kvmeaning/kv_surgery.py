@@ -73,3 +73,28 @@ def readout_batch(model, caches: list, suffix_ids: list[int], masked: list[list[
         kw["position_ids"] = torch.arange(start_pos, start_pos + S, device=dev)[None].expand(B, S)
     ids = torch.tensor([suffix_ids] * B, device=dev)
     return model(input_ids=ids, past_key_values=c, attention_mask=am, use_cache=True, **kw).logits[:, -1].float()
+
+
+@torch.no_grad()
+def greedy(model, cache, suffix_ids: list[int], max_new: int, masked: list[tuple[int, int]] = (),
+           start_pos: int | None = None, stop_ids: Iterable[int] = ()) -> list[int]:
+    c = copy.deepcopy(cache)
+    T = c.get_seq_length()
+    dev = c.layers[0].keys.device
+    am = torch.ones(1, T, dtype=torch.long, device=dev)
+    for a, b in masked:
+        am[0, a:b] = 0
+    pos = T if start_pos is None else start_pos
+    stop, ids, out = set(stop_ids), list(suffix_ids), []
+    for _ in range(max_new):
+        S = len(ids)
+        am = torch.cat([am, torch.ones(1, S, dtype=torch.long, device=dev)], dim=1)
+        logits = model(input_ids=torch.tensor([ids], device=dev), past_key_values=c, attention_mask=am,
+                       position_ids=torch.arange(pos, pos + S, device=dev)[None], use_cache=True).logits[0, -1]
+        pos += S
+        nxt = int(logits.argmax())
+        if nxt in stop:
+            break
+        out.append(nxt)
+        ids = [nxt]
+    return out
