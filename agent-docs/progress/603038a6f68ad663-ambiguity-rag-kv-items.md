@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: d65a2530eca030823e8f790150b1b5b126b1a56e
+commit: f297a31632a1e30d9d09756ac719e630134369ab
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -47,11 +47,16 @@ commit: d65a2530eca030823e8f790150b1b5b126b1a56e
 - Meaning vs edit count: neutral variants with as many changed words as A/B were not written, because A/B differ by up to 7–8 words in 8–14-word explanations. `scripts/ambig_meaning_vs_edits.py` instead compares, per item (median over cue × order, v l2), neutral pairs (same meaning, 1 token edit), paraphrase pairs (same meaning, 2–14 token edits; main run) and A/B pairs (different meaning, 1–10 token edits). Within-item regression log v ~ log(token edits) + tokens after last edit + meaning differs: +0.599 ± 0.046, +0.033 ± 0.011, +0.301 ± 0.059 (meaning ×1.35). A/B pairs with exactly 1 token edit vs the same item's neutral pair (n=8): ratios 0.85–2.38, median 1.64 (the A/B swap is a content word, the neutral swap a function word or synonym). Paraphrases usually have more token edits and larger distance than A/B (all 48 pairs: median A/B over paraphrase 0.62); with token edits within 2 of each other (7 pairs) 1.9; lexical A/B exceeds its paraphrases despite fewer edits (lex-01 0.29 vs 0.14–0.18, lex-06 0.285 vs 0.13–0.15, lex-13 0.263 vs 0.14–0.16).
   - commit: d65a253; files: scripts/ambig_meaning_vs_edits.py
 
+- Per-head breakdown: `scripts/ambig_head_report.py` (neutral run + main run paraphrase pairs, no model run, 1.5 s) prints per (layer, kv head) log(A_pre|B_pre / one-word floor), item mean, layers 1–35 (layer 0 document K/V are identical across conditions, distance 0); output saved as `runs/ambig/neutral/heads.txt`, scores as `head_scores.json`. v: within a layer the max/min head ratio has median 1.13 (max 1.29) while layer means are 1.53–2.21; top heads are 1.09–1.13× their layer mean (ALL: L29h6, L30h4, L19h7, L27h7, L12h2). Split-half over items (stratified by type, 200 splits): within-layer centered head profile spearman 0.95 (v) / 0.93 (k_pre), top-10 overlap 7 (chance 0.36); a meaning-free profile log(A|nA / B|nB) gives 0.01 / -0.00. Per type centered reliability: lexical 0.94, structural 0.69, pragmatic 0.90, entity 0.93 (v); type-to-type agreement 0.00–0.66 (pragmatic vs entity 0.00). Paraphrase control (24 items): centered A/B profile vs paraphrase-over-floor profile spearman 0.44 (v) / 0.62 (k_pre), top-10 overlap 1. Within-layer spearman across 8 kv heads between centered score and answer→document attention (mean of the 4 query heads per kv head, A_pre/B_pre): layers 24–35 item median -0.15 (v) / -0.29 (k_pre), item-pooled -0.28 / -0.47; layers 1–23 near 0.
+  - commit: f297a31; files: scripts/ambig_head_report.py
+
 ### Next Step
-- Report the meaning-vs-edit-count analysis. Open candidates: per-head breakdown of correct-vs-wrong distance, relating distance and attention to whether the model followed the explanation; whether entity items are analysed separately is open.
-  - commit: d65a253; files: scripts/ambig_meaning_vs_edits.py
+- Report the per-head breakdown. Open candidates: relating distance and attention to whether the model followed the explanation; content-word neutral floor; head ablation or patching (needs model runs, estimate before starting).
+  - commit: f297a31; files: scripts/ambig_head_report.py
 
 ### Constraints
+- "진행해"
+  - source: user prompt, this session (per-head breakdown)
 - "1번으로"
   - source: user prompt, this session (separate meaning from the number of changed tokens)
 - "진행하자. 얼마나 걸릴 것 같아? 오래 걸리면 (>2h) 시작말고 먼저 보고해"
@@ -219,3 +224,11 @@ commit: d65a2530eca030823e8f790150b1b5b126b1a56e
 #### 21 — 2026-11-08T08:57:10Z
 
 > 1번으로
+
+#### 22 — 2026-11-08T10:21:44Z
+
+> head 별 분해의 작업 시간을 예측해줘
+
+#### 23 — 2026-11-08T10:22:31Z
+
+> 진행해
