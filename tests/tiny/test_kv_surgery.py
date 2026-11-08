@@ -84,3 +84,29 @@ def test_greedy_with_masked_span_equals_dropped_span_with_gap():
     assert masked == dropped
     closed = S.greedy(model, S.close_gap(model, P.prefill(model, ids[:4]), (4, 4)), ids[4:5], 3)
     assert closed == _greedy_full(model, ids[:5], 3)
+
+
+def test_batched_greedy_matches_single_rows():
+    model = H.get_model("dense", 1.0)
+    a, b = H.rand_ids(12, 9)[0].tolist(), H.rand_ids(12, 10)[0].tolist()
+    ca, cb = P.prefill(model, a[:-1]), P.prefill(model, b[:-1])
+    got = S.greedy_batch(model, [ca, cb, ca], a[-1:], 5, masked=[[], [], [(2, 6)]])
+    assert got[0] == S.greedy(model, ca, a[-1:], 5)
+    assert got[1] == S.greedy(model, cb, a[-1:], 5)
+    assert got[2] == S.greedy(model, ca, a[-1:], 5, masked=[(2, 6)])
+    stop = got[0][2]
+    short = S.greedy_batch(model, [ca], a[-1:], 5, stop_ids=[stop])[0]
+    assert short == got[0][:got[0].index(stop)]
+
+
+def test_recompute_tail_equals_prefill_when_nothing_was_edited():
+    model = H.get_model("dense", 1.0)
+    ids = H.rand_ids(12, 11)[0].tolist()
+    c = P.prefill(model, ids)
+    r = S.recompute_tail(model, c, ids, 4)
+    for x, y in zip(r.layers, c.layers):
+        assert torch.allclose(x.keys, y.keys, atol=1e-4) and torch.allclose(x.values, y.values, atol=1e-4)
+    edited = S.splice(c, P.prefill(model, H.rand_ids(12, 12)[0].tolist()), (0, 3))
+    re = S.recompute_tail(model, edited, ids, 4)
+    assert not torch.allclose(re.layers[-1].values[:, :, -4:], c.layers[-1].values[:, :, -4:], atol=1e-3)
+    assert torch.equal(re.layers[-1].values[:, :, 3:8], edited.layers[-1].values[:, :, 3:8])

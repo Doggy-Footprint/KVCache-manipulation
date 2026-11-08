@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 395ee54656e5b2a28a97df491ba88382ad7d8708
+commit: 1b592679720390ff400d250a84bbc08c654f98be
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -64,11 +64,16 @@ commit: 395ee54656e5b2a28a97df491ba88382ad7d8708
 - Instruction-injection experiment, screening: `data/inject/screen.json` (10 Python tasks; 6 kinds, each a system rule plus a contradicting mid-prompt "Reviewer note"), `src/kvmeaning/inject.py` (segment-wise prompt: system rule / task line / injection / requirements + example + assistant header; `measure` per kind), `scripts/inject_screen.py` (batched greedy, 200 new tokens). Run `runs/inject/screen.jsonl` (git-ignored; 120 generations, about 14 min). Rule violated in clean / contaminated prompts: comments 0/10 vs 10/10 (mean 6.3 comment lines), print 0/10 vs 9/10, javascript 0/10 vs 10/10, type_hints 0/10 vs 10/10, docstring 2/10 vs 10/10, camelcase 0/10 vs 0/10. `kv_surgery.greedy` (cache-based greedy with masked spans kept through generation and explicit positions) added; tiny tests 7 passed.
   - commit: 395ee54; files: data/inject/screen.json, src/kvmeaning/inject.py, scripts/inject_screen.py, src/kvmeaning/kv_surgery.py
 
+- Instruction-injection removal, main run: `data/inject/main.json` (20 tasks; comments with 2 phrasings, javascript, print; neutral note "Reviewer note: the tests will run on Python 3.11."), `scripts/inject_surgery.py` (per contaminated prompt: contaminated and masked share one batch; clean re-prefill, cut + re-RoPE, cut + re-RoPE + recompute last 5 or 20 tokens, neutral note cut + re-RoPE share another; neutral note present alone; greedy, 160 new tokens), `kv_surgery.greedy_batch` and `recompute_tail` (tiny tests 9 passed). Run `runs/inject/surgery.jsonl` (git-ignored; 80 prompts, 26 min); `scripts/inject_surgery_report.py` output in `runs/inject/surgery_summary.txt`. Rule violated (of 80): contaminated 78, masked 6, cut + re-RoPE 6, recompute last 5 tokens 2, recompute last 20 tokens 2, clean re-prefill 2, neutral note present 4, neutral note cut 2. The 2 clean-prefill violations are word_counts (comments task, both phrasings; 2 comment lines also in the clean prompt). The other 4 masked/cut violations (merge_sorted, count_primes comments in both phrasings; binary_search print) keep 1-3 of the 3-7 contaminated items and disappear after recomputing the last 5 tokens (`<|im_end|>\n<|im_start|>assistant\n`). Code identical to clean re-prefill: masked 48, cut 48, recompute5 51, recompute20 57, neutral present 56, neutral cut 63; masked text equals cut text in 72/80.
+  - commit: 1b59267; files: data/inject/main.json, scripts/inject_surgery.py, scripts/inject_surgery_report.py, src/kvmeaning/kv_surgery.py
+
 ### Next Step
-- Report screening and the main-run design (contaminated / clean re-prefill / mask / drop + re-RoPE / drop + re-RoPE + recompute last m tokens / neutral-sentence removal control) with its time estimate; wait for the user's go.
-  - commit: 395ee54; files: scripts/inject_screen.py
+- Report the injection-removal results; offer to add them to the published page.
+  - commit: 1b59267; files: scripts/inject_surgery_report.py
 
 ### Constraints
+- "가보자고!"
+  - source: user prompt, this session (go-ahead for the injection-removal main run)
 - "새로운 실험 - 중간에 삽입된 instruction을 지우는 실험을 해보자."
   - source: user prompt, this session (pasted plan: contaminated control, clean re-prefill, KV manipulation without prefill; find a contamination case whose removal is visible first)
 - "1~3까지 한 번에 돌려"
@@ -389,4 +394,18 @@ commit: 395ee54656e5b2a28a97df491ba88382ad7d8708
 > <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/b2ugjebjo.output</output-file>
 > <status>completed</status>
 > <summary>Background command "Run screening for remaining contamination kinds" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 43 — 2026-11-08T14:55:04Z
+
+> 가보자고!
+
+#### 44 — 2026-11-08T15:24:03Z
+
+> <task-notification>
+> <task-id>b0zr43003</task-id>
+> <tool-use-id>toolu_01TkA8BdQ9g1j5as2HhmcjFd</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/b0zr43003.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Run full injection surgery experiment in background" completed (exit code 0)</summary>
 > </task-notification>

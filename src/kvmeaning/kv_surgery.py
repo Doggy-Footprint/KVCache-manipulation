@@ -98,3 +98,48 @@ def greedy(model, cache, suffix_ids: list[int], max_new: int, masked: list[tuple
         out.append(nxt)
         ids = [nxt]
     return out
+
+
+@torch.no_grad()
+def recompute_tail(model, cache, ids: list[int], m: int):
+    """Drops the last m cached rows and re-runs those m tokens on top, so they see the current (edited) cache."""
+    T = cache.get_seq_length()
+    c = drop_span(cache, (T - m, T))
+    model(input_ids=torch.tensor([ids[T - m:T]], device=c.layers[0].keys.device), past_key_values=c, use_cache=True)
+    return c
+
+
+@torch.no_grad()
+def greedy_batch(model, caches: list, suffix_ids: list[int], max_new: int,
+                 masked: list[list[tuple[int, int]]] | None = None, start_pos: int | None = None,
+                 stop_ids: Iterable[int] = ()) -> list[list[int]]:
+    """Rows share one suffix and one position sequence; finished rows keep decoding until all stop and their
+    extra tokens are discarded."""
+    c = stack_caches(caches) if len(caches) > 1 else copy.deepcopy(caches[0])
+    B, T = len(caches), caches[0].get_seq_length()
+    dev = c.layers[0].keys.device
+    am = torch.ones(B, T, dtype=torch.long, device=dev)
+    for i, spans in enumerate(masked or [[]] * B):
+        for a, b in spans:
+            am[i, a:b] = 0
+    pos = T if start_pos is None else start_pos
+    stop = set(stop_ids)
+    ids = torch.tensor([suffix_ids] * B, device=dev)
+    out, alive = [[] for _ in range(B)], [True] * B
+    for _ in range(max_new):
+        S = ids.shape[1]
+        am = torch.cat([am, torch.ones(B, S, dtype=torch.long, device=dev)], dim=1)
+        logits = model(input_ids=ids, past_key_values=c, attention_mask=am,
+                       position_ids=torch.arange(pos, pos + S, device=dev)[None].expand(B, S), use_cache=True).logits[:, -1]
+        pos += S
+        nxt = logits.argmax(-1)
+        for i, t in enumerate(nxt.tolist()):
+            if alive[i]:
+                if t in stop:
+                    alive[i] = False
+                else:
+                    out[i].append(t)
+        if not any(alive):
+            break
+        ids = nxt[:, None]
+    return out
