@@ -63,7 +63,7 @@ def check(items, tok, amb, ad):
         seen.add(i)
         if it["type"] not in TYPES or not i.startswith(TYPES[it["type"]] + "-"):
             E(f"type/id prefix mismatch ({it['type']})")
-        for k in ("cues", "options", "expl") + tuple(k for k in ("expl_para", "expl_neutral") if k in it):
+        for k in ("cues", "options", "expl") + tuple(k for k in ("expl_para", "expl_neutral", "expl_content") if k in it):
             if set(it[k]) != {"A", "B"} or not all(isinstance(v, str) and v.strip() for v in it[k].values()):
                 E(f"{k} must have non-empty A and B")
         if errs and errs[-1].startswith(f"{i}:"):
@@ -79,20 +79,22 @@ def check(items, tok, amb, ad):
             lp = {k: n(PRE + it["expl_para"][k]) for k in "AB"}
             if not (lp["A"] == lp["B"] == le["A"]):
                 E(f"paraphrase lengths A={lp['A']} B={lp['B']} must equal {le['A']}")
-        if "expl_neutral" in it:
+        for f, label in (("expl_neutral", "neutral"), ("expl_content", "content-word")):
+            if f not in it:
+                continue
             for k in "AB":
-                a, b = it["expl"][k].split(), it["expl_neutral"][k].split()
-                if n(PRE + it["expl_neutral"][k]) != le[k]:
-                    E(f"neutral variant {k} length {n(PRE + it['expl_neutral'][k])} must equal {le[k]}")
+                a, b = it["expl"][k].split(), it[f][k].split()
+                if n(PRE + it[f][k]) != le[k]:
+                    E(f"{label} variant {k} length {n(PRE + it[f][k])} must equal {le[k]}")
                 if len(a) != len(b) or sum(x != y for x, y in zip(a, b)) != 1:
-                    E(f"neutral variant {k} must differ from expl {k} in exactly one word")
+                    E(f"{label} variant {k} must differ from expl {k} in exactly one word")
         dA, dB, d0 = ids(doc(it, "A")), ids(doc(it, "B")), ids(doc(it, None))
         if len(dA) != len(dB):
             E(f"document lengths with cue A={len(dA)} B={len(dB)} must be equal")
         if dA[:len(d0)] != d0 or dB[:len(d0)] != d0:
             E("lead+span tokens change when a cue is appended (tokenizer merge across the boundary)")
 
-        expls = [it.get(f, {}).get(k, "") for f in ("expl", "expl_para", "expl_neutral") for k in "AB"]
+        expls = [it.get(f, {}).get(k, "") for f in ("expl", "expl_para", "expl_neutral", "expl_content") for k in "AB"]
         for k in "AB":
             opt = re.compile(r"\b" + re.escape(it["options"][k].lower()) + r"\b")
             for e in expls:

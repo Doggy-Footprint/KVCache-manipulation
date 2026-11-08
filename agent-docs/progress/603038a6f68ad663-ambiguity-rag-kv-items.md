@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 76d3607cb4e62f8afba7d45c89618fc5e3dcaba6
+commit: 2662f81e427ff3fa2651a5fe93a13601a94c4f81
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -53,11 +53,18 @@ commit: 76d3607cb4e62f8afba7d45c89618fc5e3dcaba6
 - Behaviour link: `scripts/ambig_behavior_link.py` (no model run, 7 s; output `runs/ambig/neutral/behavior_link.txt`). Within an item, lead+span K/V do not vary with cue (causal attention, cue comes later) or option order (options come after the document), so document distance is compared across items only. Explanation effect per item = mean over cue × order of (margin_A under A explanation − margin_A under B explanation)/2, margin = log p(reading A letter) − log p(reading B letter): pre median 4.11 (lexical 13.60, structural 4.17, pragmatic 4.18, entity 1.76), post 8.73. Type-centered spearman over 60 items between effect and A_pre|B_pre distance (v over one-word floor, raw, k_pre likewise; layer bands 1–11/12–23/24–35): pre −0.12 to +0.04, post −0.16 to −0.24; within-type (n=15) values range −0.56 to +0.27 with no consistent sign. At type level, lexical has both the largest distance ratio and effect and entity the smallest (4 types). Within item × cue × relation × position, answer→explanation attention (mean over layers and query heads) vs margin toward the explanation's reading: pre +0.18 (layers 24–35 +0.21), post −0.11 (n=1008 each); with option order as the only variation: +0.09 pre, −0.13 post (504 pairs). Per query head the pre top values are +0.27–0.33 (L22–L26), split-half head-profile spearman 0.34, top-10 overlap 3 (chance 0.09); post top +0.32–0.45, 0.61, overlap 5.
   - commit: 76d3607; files: scripts/ambig_behavior_link.py
 
+- Head ablation: `scripts/ambig_head_ablation.py` zeroes the o_proj input slices of 10 query heads at the answer position only; heads are the top answer→explanation attention vs margin heads chosen on the other fold (2 folds stratified by type), with 2 layer-matched random sets; baseline matches the main run (pilot max |Δlogp| 5e-7), so base is taken from the main run. Run `runs/ambig/ablation` (git-ignored; 1440 prompts × 3 settings, 37 min). `scripts/ambig_ablation_report.py` output in `runs/ambig/ablation/summary.txt`: explanation effect pre base mean 6.23, top −0.04, random −0.45/−0.21; post base 9.74, top −0.46, random +0.21/−0.59; follow rate 0.65 (pre) and 0.74 (post) unchanged within 0.01 in every setting. Ablating these heads does not reduce the effect beyond random heads in the same layers (redundancy across heads or the zero-ablation choice not tested; hypothesis).
+  - commit: 2662f81; files: scripts/ambig_head_ablation.py, scripts/ambig_ablation_report.py
+- Content-word floor: every item has `expl_content` {A, B}, one content word replaced by an equal-token-length synonym (e.g. film→movie, signals→suggests, phrase→expression); 7 first choices that matched option words were replaced. Conditions `cA_pre`/`cB_pre`, pairs A_pre|cA_pre, B_pre|cB_pre; checker 60 items 0 errors; builder 4656 prompts, 0 alignment violations; tiny suite 367 passed, 12 skipped. Run `runs/ambig/content` (`--no-raw --conds A_pre B_pre cA_pre cB_pre`) was started and its result is not yet read; report with `scripts/ambig_content_floor_report.py`.
+  - commit: 2662f81; files: data/ambig_rag/lexical.jsonl, src/kvmeaning/ambig.py, scripts/ambig_content_floor_report.py
+
 ### Next Step
-- Report the behaviour-link analysis. Open candidates: content-word neutral floor; head ablation or patching of the explanation-reading query heads (needs model runs, estimate before starting).
-  - commit: 76d3607; files: scripts/ambig_behavior_link.py
+- Check `runs/ambig/content.log` finished 60/60 (rerun the same command to resume otherwise), run `scripts/ambig_content_floor_report.py > runs/ambig/content/summary.txt`, and report ablation and content-word floor results to the user.
+  - commit: 2662f81; files: scripts/ambig_content_floor_report.py
 
 ### Constraints
+- "시간 2시간 이하는 계속 진행해. 결과만 잘 남겨두고"
+  - source: user prompt, this session (continue tasks under 2 h, keep results recorded)
 - "행동과 연결 진행해보자."
   - source: user prompt, this session (relate distance and attention to whether the model followed the explanation)
 - "진행해"
@@ -241,3 +248,21 @@ commit: 76d3607cb4e62f8afba7d45c89618fc5e3dcaba6
 #### 24 — 2026-11-08T10:29:26Z
 
 > 행동과 연결 진행해보자.
+
+#### 25 — 2026-11-08T10:32:33Z
+
+> 시간 2시간 이하는 계속 진행해
+
+#### 26 — 2026-11-08T10:32:38Z
+
+> 시간 2시간 이하는 계속 진행해. 결과만 잘 남겨두고
+
+#### 27 — 2026-11-08T11:13:42Z
+
+> <task-notification>
+> <task-id>bxul41zz0</task-id>
+> <tool-use-id>toolu_011QXyRYW1rUQj2f8QzaPQLi</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bxul41zz0.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Run head ablation experiment in background" completed (exit code 0)</summary>
+> </task-notification>

@@ -89,3 +89,11 @@ def test_neutral_variant_conditions_align_with_explanation_conditions(tok, items
     assert _text(tok, n, "expl") == A.PRE + it["expl_neutral"]["B"]
     assert n.relation == "wrong" and n.enc.spans["doc"] == _get(prompts, "str-03", "B_pre").enc.spans["doc"]
     assert {p.item for p in prompts if p.cond == "nA_pre"} == {i["id"] for i in items}
+
+
+def test_content_word_variant_conditions_align_with_explanation_conditions(tok, items, prompts):
+    it = next(i for i in items if i["id"] == "lex-01")
+    c = _get(prompts, "lex-01", "cA_pre")
+    assert _text(tok, c, "expl") == A.PRE + it["expl_content"]["A"]
+    assert c.relation == "correct" and c.enc.spans["doc"] == _get(prompts, "lex-01", "A_pre").enc.spans["doc"]
+    assert {p.item for p in prompts if p.cond == "cB_pre"} == {i["id"] for i in items}

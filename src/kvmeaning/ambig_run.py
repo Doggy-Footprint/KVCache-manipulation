@@ -21,7 +21,7 @@ RAW_ITEMS = ("lex-01", "lex-02", "str-01", "str-02", "prag-01", "prag-02", "ent-
 # none|*_pre pairs compare different absolute positions, so their k_post distances include the RoPE shift.
 PAIRS = (
     ("U_pre", "U2_pre"), ("U_pre", "A_pre"), ("U_pre", "B_pre"), ("A_pre", "B_pre"),
-    ("A_pre", "pA_pre"), ("B_pre", "pB_pre"), ("A_pre", "nA_pre"), ("B_pre", "nB_pre"), ("U_pre", "pA_pre"), ("U_pre", "pB_pre"),
+    ("A_pre", "pA_pre"), ("B_pre", "pB_pre"), ("A_pre", "nA_pre"), ("B_pre", "nB_pre"), ("A_pre", "cA_pre"), ("B_pre", "cB_pre"), ("U_pre", "pA_pre"), ("U_pre", "pB_pre"),
     ("none", "A_post"), ("none", "B_post"),
     ("none", "U_pre"), ("none", "A_pre"), ("none", "B_pre"),
 )

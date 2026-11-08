@@ -23,6 +23,7 @@ class Cond:
     pos: str | None
     para: bool = False
     neutral: bool = False
+    content: bool = False
 
 
 CONDS = {
@@ -36,7 +37,8 @@ PARA_CONDS = {
     "pB_pre": Cond("B", "pre", True), "pB_post": Cond("B", "post", True),
 }
 NEUTRAL_CONDS = {"nA_pre": Cond("A", "pre", neutral=True), "nB_pre": Cond("B", "pre", neutral=True)}
-ALL = {**CONDS, **PARA_CONDS, **NEUTRAL_CONDS}
+CONTENT_CONDS = {"cA_pre": Cond("A", "pre", content=True), "cB_pre": Cond("B", "pre", content=True)}
+ALL = {**CONDS, **PARA_CONDS, **NEUTRAL_CONDS, **CONTENT_CONDS}
 
 
 @dataclass
@@ -73,7 +75,7 @@ def relation(cond: Cond, cue: str | None) -> str:
 def _expl_text(item: dict, cond: Cond) -> str:
     if cond.expl in ("U", "U2"):
         return PRE + item["unrelated" if cond.expl == "U" else "unrelated2"]
-    return PRE + item["expl_para" if cond.para else "expl_neutral" if cond.neutral else "expl"][cond.expl]
+    return PRE + item["expl_para" if cond.para else "expl_neutral" if cond.neutral else "expl_content" if cond.content else "expl"][cond.expl]
 
 
 def _qa(tok, item: dict, order: str) -> list[int]:
@@ -142,7 +144,8 @@ def with_unrelated2(tok, items: list[dict]) -> list[dict]:
     return out
 
 
-def build(tok, items: list[dict], para: bool = True, closed: bool = True, neutral: bool = True) -> list[Prompt]:
+def build(tok, items: list[dict], para: bool = True, closed: bool = True, neutral: bool = True,
+          content: bool = True) -> list[Prompt]:
     out = []
     for it in with_unrelated2(tok, items):
         conds = {k: c for k, c in CONDS.items() if k != "U2_pre" or "unrelated2" in it}
@@ -150,6 +153,8 @@ def build(tok, items: list[dict], para: bool = True, closed: bool = True, neutra
             conds.update(PARA_CONDS)
         if neutral and "expl_neutral" in it:
             conds.update(NEUTRAL_CONDS)
+        if content and "expl_content" in it:
+            conds.update(CONTENT_CONDS)
         for cue in CUES:
             for order in ORDERS:
                 for name, c in conds.items():
