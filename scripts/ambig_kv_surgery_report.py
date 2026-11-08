@@ -74,14 +74,17 @@ def main():
         for D in "ABU":
             lp = main[item][(f"{D}_pre", cue, order)]["logp"]
             err.append(abs(m(c[f"F:{D}|{D}"]) - (lp[inv["A"]] - lp[inv["B"]])))
-        mask_none.append(abs(m(c["F:mask|U"]) - m(c["none"])))
-        gap_none.append(abs(m(c["G:closed|U"]) - m(c["none"])))
+        mask_none.append((abs(m(c["F:mask|U"]) - m(c["F:U|U"])), abs(m(c["F:U|U"]) - m(c["none"]))))
+        gap_none.append(abs(m(c["G:closed|U"]) - m(c["F:mask|U"])))
         for D in "AB":
             tops[r["top_tokens"][D][0].strip() or repr(r["top_tokens"][D][0])] += 1
     print(f"# {len(rows)} groups (item x cue x order), {len(typ)} items")
     print(f"  pipeline check |rebuilt original - main run| margin: median {med(err):.2f}, max {max(err):.2f}")
-    print(f"  masking artifact |mask(U doc) - no-explanation prompt|: median {med(mask_none):.2f}, max {max(mask_none):.2f}")
-    print(f"  re-RoPE artifact |closed gap(U doc) - no-explanation prompt|: median {med(gap_none):.2f}, max {max(gap_none):.2f}")
+    mk = [x[0] for x in mask_none]
+    un = [x[1] for x in mask_none]
+    print(f"  masking artifact |unrelated sentence masked - unrelated sentence visible| (U doc): median {med(mk):.2f}, max {max(mk):.2f}")
+    print(f"  re-RoPE vs masking |gap closed - masked| (U doc): median {med(gap_none):.2f}, max {max(gap_none):.2f}")
+    print(f"  reference |unrelated sentence visible - no-explanation prompt|: median {med(un):.2f}, max {max(un):.2f} (prompt layouts differ)")
     print("\n# explanation effect = (margin under A-variant - margin under B-variant) / 2, margin = log p(reading A) - log p(reading B)")
     print("  median over items of the per-item mean over cue x order")
     keys = list(next(iter(per_item.values())).keys())

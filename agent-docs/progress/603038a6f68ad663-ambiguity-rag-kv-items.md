@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 64fb88818574201c6adf588aca3182f866169bc4
+commit: e3c60eed0caa950de0bc263bc9d649a2b2c76b9d
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -58,12 +58,12 @@ commit: 64fb88818574201c6adf588aca3182f866169bc4
 - Content-word floor: every item has `expl_content` {A, B}, one content word replaced by an equal-token-length synonym (e.g. film→movie, signals→suggests, phrase→expression); 7 first choices that matched option words were replaced. Conditions `cA_pre`/`cB_pre`, pairs A_pre|cA_pre, B_pre|cB_pre; checker 60 items 0 errors; builder 4656 prompts, 0 alignment violations; tiny suite 367 passed, 12 skipped. Run `runs/ambig/content` (git-ignored; `--no-raw --conds A_pre B_pre cA_pre cB_pre`, 60/60, exit 0); `scripts/ambig_content_floor_report.py` output in `runs/ambig/content/summary.txt`. Content-word floor over one-word floor (v): ALL 0.96, lexical 0.85, structural 1.20, pragmatic 0.94, entity 0.84. A/B over content-word floor (v): ALL 1.95, lexical 4.23, structural 1.46, pragmatic 1.94, entity 1.50; by layer 1.2–1.4 (layers 1–9) rising to 2.1–2.3 (layers 19–35). One-token A/B items (n=8) median 1.62 over content floor vs 1.61 over one-word floor. Forced choice unchanged in 686/720 (0.95). Head profile over content floor vs over one-word floor spearman 0.76 (v) / 0.88 (k_pre), split-half 0.88 / 0.81, top-10 overlap 6 / 4.
   - commit: 2662f81; files: data/ambig_rag/lexical.jsonl, src/kvmeaning/ambig.py, scripts/ambig_content_floor_report.py
 
-- KV surgery: `src/kvmeaning/kv_surgery.py` (drop_span, rerope, close_gap, splice, readout_batch with padding-mask hiding; tiny tests `tests/tiny/test_kv_surgery.py`, 5 passed) and `scripts/ambig_kv_surgery.py`. For each item × cue × order, A_pre/B_pre/U_pre caches are prefilled up to the document end (equal length; ids outside the explanation span identical, asserted); cells: explanation slot A/B/U/masked × document block [expl end, doc end) from A/B/U (12), header (`\n\nRetrieved document:\n`) vs body splice from A/B into U with explanation masked or U visible (8), document block from A/B into U by layer band 0–11/12–23/24–35 with explanation masked (6), A/B document with top-1/2/4/8 most V-deviating block tokens (vs U) or 4 random tokens replaced by U (10), explanation removed and gap closed by re-RoPE (3), plus the no-explanation prompt. Pilot (lex-01, 6 groups): rebuilt original cells differ from the main run by at most 1.0 in margin (bf16, prefill+suffix split); no-explanation prompt matches exactly; per-group time grew from 16 s to 150 s until `torch.mps.empty_cache()` per group and batches of 12 were added (then about 11 s per group). Full run `runs/ambig/surgery/cells.jsonl` (git-ignored) started; report with `scripts/ambig_kv_surgery_report.py`.
+- KV surgery: `src/kvmeaning/kv_surgery.py` (drop_span, rerope, close_gap, splice, readout_batch with padding-mask hiding; tiny tests `tests/tiny/test_kv_surgery.py`, 5 passed) and `scripts/ambig_kv_surgery.py`. For each item × cue × order, A_pre/B_pre/U_pre caches are prefilled up to the document end (equal length; ids outside the explanation span identical, asserted); cells: explanation slot A/B/U/masked × document block [expl end, doc end) from A/B/U (12), header (`\n\nRetrieved document:\n`) vs body splice from A/B into U with explanation masked or U visible (8), document block from A/B into U by layer band 0–11/12–23/24–35 with explanation masked (6), A/B document with top-1/2/4/8 most V-deviating block tokens (vs U) or 4 random tokens replaced by U (10), explanation removed and gap closed by re-RoPE (3), plus the no-explanation prompt. Pilot (lex-01, 6 groups): rebuilt original cells differ from the main run by at most 1.0 in margin (bf16, prefill+suffix split); no-explanation prompt matches exactly; per-group time grew from 16 s to 150 s until `torch.mps.empty_cache()` per group and batches of 12 were added (then about 11 s per group). Full run `runs/ambig/surgery/cells.jsonl` (git-ignored; 360 groups, about 47 min, exit 0); `scripts/ambig_kv_surgery_report.py` output in `runs/ambig/surgery/summary.txt`. Checks: rebuilt original vs main run margin median 0.13, max 2.50; gap closed by re-RoPE vs masked median 0.38, max 4.37; unrelated sentence masked vs visible median 1.00; unrelated-sentence prompt vs no-explanation prompt median 1.75, max 38.50 (layouts differ; mainly cue-less lexical groups). Explanation effect (median over items; ALL / lexical / structural / pragmatic / entity): full 4.17 / 13.62 / 4.17 / 4.22 / 1.75; trace only (explanation masked) 1.01 / 7.70 / 1.05 / 0.83 / 0.31; direct only (document KV from the unrelated-sentence run) 1.82 / 3.99 / 1.82 / 1.31 / 1.64; share of full (items with |full| > 2) trace 0.25 / 0.74 / 0.20 / 0.25 / 0.10, direct 0.46 / 0.38 / 0.54 / 0.42 / 0.43. Trace by part: header tokens 0.07, body 0.68 (lexical 7.47); by layer band with explanation masked: 0–11 0.02, 12–23 0.81 (lexical 9.69), 24–35 0.00. Repair of the A/B document by replacing its most V-deviating block tokens with the unrelated-run values: trace left top1 0.77, top2 0.54, top4 0.32, top8 -0.00, random 4 tokens 1.04 (lexical 2.66 / 1.03 / 0.16 / 0.14 / 6.03). The most-deviating token is the `\n\n` header token in 194 of 720 cases. Visible text vs conflicting document trace: 2.27 toward the visible text. Rate of answering with the explanation's reading (0.5 = same answer under A and B): full 0.65, trace only 0.57, direct only 0.57, repair top4 0.51, random 4 0.55.
   - commit: 64fb888; files: src/kvmeaning/kv_surgery.py, scripts/ambig_kv_surgery.py, scripts/ambig_kv_surgery_report.py
 
 ### Next Step
-- Check `runs/ambig/surgery.log` reached 360/360 (rerun the same command to resume), run `scripts/ambig_kv_surgery_report.py > runs/ambig/surgery/summary.txt`, report to the user.
-  - commit: 64fb888; files: scripts/ambig_kv_surgery_report.py
+- Report the KV surgery results; no further task chosen by the user.
+  - commit: e3c60ee; files: scripts/ambig_kv_surgery_report.py
 
 ### Constraints
 - "1~3까지 한 번에 돌려"
@@ -339,4 +339,14 @@ commit: 64fb88818574201c6adf588aca3182f866169bc4
 > <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/b0px2f9g3.output</output-file>
 > <status>completed</status>
 > <summary>Background command "Time runner per group on one item" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 39 — 2026-11-08T14:15:02Z
+
+> <task-notification>
+> <task-id>bvtxezdha</task-id>
+> <tool-use-id>toolu_01KVDKcruL2So2s5xwLwKMva</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bvtxezdha.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Run full KV surgery experiment in background" completed (exit code 0)</summary>
 > </task-notification>
