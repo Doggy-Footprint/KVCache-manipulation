@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 2c443c42960a8a1bae57890dfe02ec8c7e19b8f1
+commit: d65a2530eca030823e8f790150b1b5b126b1a56e
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -44,12 +44,16 @@ commit: 2c443c42960a8a1bae57890dfe02ec8c7e19b8f1
   - commit: 97ae402; files: scripts/ambig_generate.py
 - Minimal-pair floor: every item has `expl_neutral` {A, B}, the explanation with one meaning-neutral word changed at equal token length (lexical/entity there→here, 2 lexical the→that; pragmatic "Y's reply"→"Y's response"; structural The→This/These, str-03 a→one, str-07 a→one / that→which, str-09 the→these). Automatic the→that / that→the / in→within swaps produced ungrammatical text ("means the a", "within mind") and were replaced by hand. Checker enforces equal length and exactly one differing word. Conditions `nA_pre`, `nB_pre`; runner `--conds`. Run `runs/ambig/neutral` (git-ignored; Q3-4B, conds A_pre B_pre nA_pre nB_pre, no raw, 1440 prompts, 14.5 min, exit 0). `scripts/ambig_floor_report.py` output saved as `runs/ambig/neutral/summary.txt`. Median A_pre|B_pre over neutral floor (v l2): ALL 1.98, lexical 3.51, structural 2.09, pragmatic 1.68, entity 1.14 (k_pre entity 0.96). Neutral floor is 0.33–0.34 of the old U_pre|U2_pre floor. By layer the ratio rises from about 1.3–1.5 (layers 3–9) to about 2.0–2.2 (layers 20–35). One-word variant keeps the forced choice in 687/720 (0.95). The ratio grows with the number of words where A and B differ (v: 1 word 1.32 n=14, 10 of them entity at 0.90; 2–3 words 2.27 n=17; 4+ or reworded 2.25 n=29), so meaning difference and token-count difference are not separated (hypothesis).
   - commit: 2c443c4; files: data/ambig_rag, scripts/check_ambig_items.py, src/kvmeaning/ambig.py, src/kvmeaning/ambig_run.py, scripts/ambig_floor_report.py
+- Meaning vs edit count: neutral variants with as many changed words as A/B were not written, because A/B differ by up to 7–8 words in 8–14-word explanations. `scripts/ambig_meaning_vs_edits.py` instead compares, per item (median over cue × order, v l2), neutral pairs (same meaning, 1 token edit), paraphrase pairs (same meaning, 2–14 token edits; main run) and A/B pairs (different meaning, 1–10 token edits). Within-item regression log v ~ log(token edits) + tokens after last edit + meaning differs: +0.599 ± 0.046, +0.033 ± 0.011, +0.301 ± 0.059 (meaning ×1.35). A/B pairs with exactly 1 token edit vs the same item's neutral pair (n=8): ratios 0.85–2.38, median 1.64 (the A/B swap is a content word, the neutral swap a function word or synonym). Paraphrases usually have more token edits and larger distance than A/B (all 48 pairs: median A/B over paraphrase 0.62); with token edits within 2 of each other (7 pairs) 1.9; lexical A/B exceeds its paraphrases despite fewer edits (lex-01 0.29 vs 0.14–0.18, lex-06 0.285 vs 0.13–0.15, lex-13 0.263 vs 0.14–0.16).
+  - commit: d65a253; files: scripts/ambig_meaning_vs_edits.py
 
 ### Next Step
-- Report the minimal-pair floor results. Open candidates: separate meaning from the number of changed tokens (e.g. floor variants with as many neutral word changes as the A/B difference), per-head breakdown of correct-vs-wrong distance, relating distance and attention to whether the model followed the explanation; whether entity items are analysed separately is open.
-  - commit: 2c443c4; files: scripts/ambig_floor_report.py
+- Report the meaning-vs-edit-count analysis. Open candidates: per-head breakdown of correct-vs-wrong distance, relating distance and attention to whether the model followed the explanation; whether entity items are analysed separately is open.
+  - commit: d65a253; files: scripts/ambig_meaning_vs_edits.py
 
 ### Constraints
+- "1번으로"
+  - source: user prompt, this session (separate meaning from the number of changed tokens)
 - "진행하자. 얼마나 걸릴 것 같아? 오래 걸리면 (>2h) 시작말고 먼저 보고해"
   - source: user prompt, this session (minimal-pair noise floor)
 - "ㄱㄱ"
@@ -211,3 +215,7 @@ commit: 2c443c42960a8a1bae57890dfe02ec8c7e19b8f1
 > <status>completed</status>
 > <summary>Background command "Run 4B on explanation and neutral-variant conditions" completed (exit code 0)</summary>
 > </task-notification>
+
+#### 21 — 2026-11-08T08:57:10Z
+
+> 1번으로
