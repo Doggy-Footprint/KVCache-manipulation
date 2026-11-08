@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 5e4f583be29a14f8b050dd1f25ed89753c294582
+commit: 64fb88818574201c6adf588aca3182f866169bc4
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -58,11 +58,16 @@ commit: 5e4f583be29a14f8b050dd1f25ed89753c294582
 - Content-word floor: every item has `expl_content` {A, B}, one content word replaced by an equal-token-length synonym (e.g. film→movie, signals→suggests, phrase→expression); 7 first choices that matched option words were replaced. Conditions `cA_pre`/`cB_pre`, pairs A_pre|cA_pre, B_pre|cB_pre; checker 60 items 0 errors; builder 4656 prompts, 0 alignment violations; tiny suite 367 passed, 12 skipped. Run `runs/ambig/content` (git-ignored; `--no-raw --conds A_pre B_pre cA_pre cB_pre`, 60/60, exit 0); `scripts/ambig_content_floor_report.py` output in `runs/ambig/content/summary.txt`. Content-word floor over one-word floor (v): ALL 0.96, lexical 0.85, structural 1.20, pragmatic 0.94, entity 0.84. A/B over content-word floor (v): ALL 1.95, lexical 4.23, structural 1.46, pragmatic 1.94, entity 1.50; by layer 1.2–1.4 (layers 1–9) rising to 2.1–2.3 (layers 19–35). One-token A/B items (n=8) median 1.62 over content floor vs 1.61 over one-word floor. Forced choice unchanged in 686/720 (0.95). Head profile over content floor vs over one-word floor spearman 0.76 (v) / 0.88 (k_pre), split-half 0.88 / 0.81, top-10 overlap 6 / 4.
   - commit: 2662f81; files: data/ambig_rag/lexical.jsonl, src/kvmeaning/ambig.py, scripts/ambig_content_floor_report.py
 
+- KV surgery: `src/kvmeaning/kv_surgery.py` (drop_span, rerope, close_gap, splice, readout_batch with padding-mask hiding; tiny tests `tests/tiny/test_kv_surgery.py`, 5 passed) and `scripts/ambig_kv_surgery.py`. For each item × cue × order, A_pre/B_pre/U_pre caches are prefilled up to the document end (equal length; ids outside the explanation span identical, asserted); cells: explanation slot A/B/U/masked × document block [expl end, doc end) from A/B/U (12), header (`\n\nRetrieved document:\n`) vs body splice from A/B into U with explanation masked or U visible (8), document block from A/B into U by layer band 0–11/12–23/24–35 with explanation masked (6), A/B document with top-1/2/4/8 most V-deviating block tokens (vs U) or 4 random tokens replaced by U (10), explanation removed and gap closed by re-RoPE (3), plus the no-explanation prompt. Pilot (lex-01, 6 groups): rebuilt original cells differ from the main run by at most 1.0 in margin (bf16, prefill+suffix split); no-explanation prompt matches exactly; per-group time grew from 16 s to 150 s until `torch.mps.empty_cache()` per group and batches of 12 were added (then about 11 s per group). Full run `runs/ambig/surgery/cells.jsonl` (git-ignored) started; report with `scripts/ambig_kv_surgery_report.py`.
+  - commit: 64fb888; files: src/kvmeaning/kv_surgery.py, scripts/ambig_kv_surgery.py, scripts/ambig_kv_surgery_report.py
+
 ### Next Step
-- Report head ablation and content-word floor results; no further task chosen by the user.
-  - commit: 5e4f583; files: scripts/ambig_content_floor_report.py
+- Check `runs/ambig/surgery.log` reached 360/360 (rerun the same command to resume), run `scripts/ambig_kv_surgery_report.py > runs/ambig/surgery/summary.txt`, report to the user.
+  - commit: 64fb888; files: scripts/ambig_kv_surgery_report.py
 
 ### Constraints
+- "1~3까지 한 번에 돌려"
+  - source: user prompt, this session (KV surgery: factorial plus header/body split, layer bands, partial repair)
 - "시간 2시간 이하는 계속 진행해. 결과만 잘 남겨두고"
   - source: user prompt, this session (continue tasks under 2 h, keep results recorded)
 - "행동과 연결 진행해보자."
@@ -120,6 +125,7 @@ commit: 5e4f583be29a14f8b050dd1f25ed89753c294582
 |---|---|---|
 | `progress.py show ambiguity-rag-kv-design` | `progress.py: not a progress path` | verified: `show` takes a file path, not a bare name |
 | generate non-letter prompts with 48 new tokens | 275/292 generations hit the cap, most mid-refusal before choosing | verified: the model states the document lacks the answer, then picks from external knowledge; 300 tokens resolves 276/292 |
+| KV surgery run with all 36 cells in one batch and no allocator release | lex-01 groups took 16, 82, 107, 130, 153 s in sequence (6 groups, 588 s) | verified: per-group `torch.mps.empty_cache()` + batches of 12 made it about 11 s per group |
 
 ### Sources
 - none yet.
@@ -275,4 +281,62 @@ commit: 5e4f583be29a14f8b050dd1f25ed89753c294582
 > <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bqyf143gc.output</output-file>
 > <status>completed</status>
 > <summary>Background command "Run content-word floor conditions without raw dumps" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 29 — 2026-11-08T12:36:09Z
+
+> 이 내용을 시각화된 아티팩트로 정리해줘. - 포트폴리오 용도, 이 내용에 대해 잘 모르는 사람에게도 소개할 수 있을 정도로 사실적인 묘사에 신경써줘.
+> 
+> 테마는 infographic. 필요하면 모션을 넣어도 돼. 
+> 
+> 우리가 어떤 목적으로 실험했고, 어떻게 확인했고, 어떤 결과가 나왔는지 적어줘
+
+#### 30 — 2026-11-08T12:36:14Z
+
+> 이 내용을 시각화된 아티팩트로 정리해줘. - 포트폴리오 용도, 이 내용에 대해 잘 모르는 사람에게도 소개할 수 있을 정도로 사실적인 묘사에 신경써줘.
+> 
+> 테마는 infographic. 필요하면 모션을 넣어도 돼. 
+> 
+> 우리가 어떤 목적으로 실험했고, 어떻게 확인했고, 어떤 결과가 나왔는지 표현해줘.
+
+#### 31 — 2026-11-08T12:45:11Z
+
+> KV 캐시 사이의 거리는 표준적으로 쓰이는 방법이야? 아니면 이 프로젝트에서 임의로 도입한거야?
+
+#### 32 — 2026-11-08T12:47:53Z
+
+> KV 캐시 조작으로 원하는 결과를 유도해볼 수 있을까? 예를 들어, 문제가 되는 KV 캐시 부분만 casual masking + RoPE 처리하고 원본과 다른 context로 비슷한 결과를 내는거지. 
+> 
+> 이를테면 혼란을 유발하는 부분을 지운다던가.
+
+#### 33 — 2026-11-08T12:50:01Z
+
+> 일단 샘플을 좀 보여줄래? 어떤 걸 넣고 어느 token을 제거할거닞
+
+#### 34 — 2026-11-08T12:50:10Z
+
+> 일단 샘플을 좀 보여줄래? 어떤 걸 넣고 어느 token을 제거할건지, 대조군으로는 뭘 넣을거진
+
+#### 35 — 2026-11-08T12:50:23Z
+
+> 일단 샘플을 좀 보여줄래? 어떤 걸 넣고 어느 token을 제거할건지, 대조군으로는 뭘 넣을건지.
+> 이것보다 괜찮은 실험 디자인이 있다면 알렺고
+
+#### 36 — 2026-11-08T12:50:26Z
+
+> 일단 샘플을 좀 보여줄래? 어떤 걸 넣고 어느 token을 제거할건지, 대조군으로는 뭘 넣을건지.
+> 이것보다 괜찮은 실험 디자인이 있다면 알려주고
+
+#### 37 — 2026-11-08T12:59:05Z
+
+> 1~3까지 한 번에 돌려
+
+#### 38 — 2026-11-08T13:24:01Z
+
+> <task-notification>
+> <task-id>b0px2f9g3</task-id>
+> <tool-use-id>toolu_01V5pJTemEFEEyR9CdgS3PYo</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/b0px2f9g3.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Time runner per group on one item" completed (exit code 0)</summary>
 > </task-notification>
