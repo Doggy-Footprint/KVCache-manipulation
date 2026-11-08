@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: d8965ca1b230b87c8f2774e1722c6b39353a68fa
+commit: 97ae402d0ef8800f19a10c9e8bf4de7ed5243a71
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -185,3 +185,15 @@ commit: d8965ca1b230b87c8f2774e1722c6b39353a68fa
 > <status>completed</status>
 > <summary>Background command "Regenerate non-letter prompts with a 300-token cap" completed (exit code 0)</summary>
 > </task-notification>
+
+#### 17 — 2026-11-08T08:03:21Z
+
+> 추천은?
+
+#### 18 — 2026-11-08T08:06:57Z
+
+> 진행하자. 얼마나 걸릴 것 같아? 오래 걸리면 (>2h) 시작말고 먼저 보고해
+
+#### 19 — 2026-11-08T08:16:56Z
+
+> ㄱㄱ

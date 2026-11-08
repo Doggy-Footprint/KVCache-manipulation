@@ -40,3 +40,13 @@ def test_rerun_skips_completed_items(tok, tmp_path, capsys):
     assert (tmp_path / "items/ent-01.json").stat().st_mtime_ns == before
     assert "skip (complete)" in capsys.readouterr().out
     assert not (tmp_path / "raw").exists()
+
+
+def test_conds_filter_runs_only_listed_conditions(tok, tmp_path):
+    model = H.get_model("dense", 1.0)
+    R.run(model, tok, "0.6B", tmp_path, only=["prag-10"], raw_items=(), conds=["A_pre", "nA_pre"])
+    meta = json.loads((tmp_path / "items/prag-10.json").read_text())
+    t = load_file(str(tmp_path / "items/prag-10.safetensors"))
+    assert {r["cond"] for r in meta["rows"]} == {"A_pre", "nA_pre"} and len(meta["rows"]) == 12
+    assert t["dist.A.AB.A_pre|nA_pre.v.l2"].float().max() > 1e-3
+    assert not any("U_pre" in k for k in t)

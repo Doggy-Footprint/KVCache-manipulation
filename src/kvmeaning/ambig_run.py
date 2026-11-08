@@ -21,7 +21,7 @@ RAW_ITEMS = ("lex-01", "lex-02", "str-01", "str-02", "prag-01", "prag-02", "ent-
 # none|*_pre pairs compare different absolute positions, so their k_post distances include the RoPE shift.
 PAIRS = (
     ("U_pre", "U2_pre"), ("U_pre", "A_pre"), ("U_pre", "B_pre"), ("A_pre", "B_pre"),
-    ("A_pre", "pA_pre"), ("B_pre", "pB_pre"), ("U_pre", "pA_pre"), ("U_pre", "pB_pre"),
+    ("A_pre", "pA_pre"), ("B_pre", "pB_pre"), ("A_pre", "nA_pre"), ("B_pre", "nB_pre"), ("U_pre", "pA_pre"), ("U_pre", "pB_pre"),
     ("none", "A_post"), ("none", "B_post"),
     ("none", "U_pre"), ("none", "A_pre"), ("none", "B_pre"),
 )
@@ -120,7 +120,8 @@ def write_item(out: Path, item: str, res: dict, meta: dict) -> None:
     os.replace(str(p) + ".tmp", p)
 
 
-def run(model, tok, size: str, out: Path, only: list[str] | None = None, raw_items=RAW_ITEMS) -> None:
+def run(model, tok, size: str, out: Path, only: list[str] | None = None, raw_items=RAW_ITEMS,
+        conds: list[str] | None = None) -> None:
     items = A.load_items()
     prompts = A.build(tok, items)
     errs = A.check(prompts)
@@ -130,9 +131,12 @@ def run(model, tok, size: str, out: Path, only: list[str] | None = None, raw_ite
     unknown = set(ids) - {it["id"] for it in items}
     if unknown:
         raise ValueError(f"unknown items {sorted(unknown)}")
+    if conds is not None and set(conds) - set(A.ALL):
+        raise ValueError(f"unknown conditions {sorted(set(conds) - set(A.ALL))}")
     by_item: dict[str, list[A.Prompt]] = {}
     for p in prompts:
-        by_item.setdefault(p.item, []).append(p)
+        if conds is None or p.cond in conds:
+            by_item.setdefault(p.item, []).append(p)
     out.mkdir(parents=True, exist_ok=True)
     prog = Progress(f"ambig {size}", len(ids))
     spec = M.MODELS[size]
@@ -147,7 +151,7 @@ def run(model, tok, size: str, out: Path, only: list[str] | None = None, raw_ite
         t0 = time.time()
         res = run_item(model, tok, size, by_item[i], out, i in set(raw_items))
         meta = dict(item=i, model=spec.repo, revision=spec.revision, kv_layers=M.kv_layers(model),
-                    pairs=[list(p) for p in PAIRS], reprs=list(REPRS), seconds=round(time.time() - t0, 1))
+                    pairs=[list(p) for p in PAIRS], reprs=list(REPRS), conds=conds, seconds=round(time.time() - t0, 1))
         write_item(out, i, res, meta)
         acc = [r for r in res["rows"] if r["gold"]]
         hit = sum(max(r["logp"], key=r["logp"].get) == r["gold"] for r in acc)
@@ -161,9 +165,10 @@ def main():
     ap.add_argument("--only", nargs="*", default=None)
     ap.add_argument("--no-raw", action="store_true")
     ap.add_argument("--device", default=None)
+    ap.add_argument("--conds", nargs="*", default=None, help="run only these conditions")
     a = ap.parse_args()
     model, tok = M.load(a.model, device=a.device)
-    run(model, tok, a.model, a.run_dir, a.only, () if a.no_raw else RAW_ITEMS)
+    run(model, tok, a.model, a.run_dir, a.only, () if a.no_raw else RAW_ITEMS, a.conds)
     print(a.run_dir)
 
 

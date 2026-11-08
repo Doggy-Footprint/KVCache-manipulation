@@ -81,3 +81,11 @@ def test_answer_position_is_last_token_and_letters_are_single_tokens(tok, prompt
     p = _get(prompts, "lex-01", "none")
     assert p.enc.spans["answer"] == (len(p.enc.ids) - 1, len(p.enc.ids))
     assert set(A.answer_ids(tok)) == {"A", "B"}
+
+
+def test_neutral_variant_conditions_align_with_explanation_conditions(tok, items, prompts):
+    it = next(i for i in items if i["id"] == "str-03")
+    n = _get(prompts, "str-03", "nB_pre")
+    assert _text(tok, n, "expl") == A.PRE + it["expl_neutral"]["B"]
+    assert n.relation == "wrong" and n.enc.spans["doc"] == _get(prompts, "str-03", "B_pre").enc.spans["doc"]
+    assert {p.item for p in prompts if p.cond == "nA_pre"} == {i["id"] for i in items}
