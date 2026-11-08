@@ -11,7 +11,7 @@ In a prompt A B [C] D E, where C is an injected instruction, D and E are compute
 - Instruction-injection removal (`runs/inject/surgery_summary.txt`; 80 contaminated prompts; 20 tasks; comments (2 phrasings), javascript, print).
   - Rule violated: contaminated 78, masked 6, cut + re-RoPE 6, cut + re-RoPE + recompute last 5 tokens 2, clean re-prefill 2.
   - The 2 clean-prefill violations are word_counts, which writes 2 comment lines without any injection.
-  - The other 4 residual violations are merge_sorted and count_primes (comments, both phrasings) and binary_search (print). They disappear after recomputing the last 5 tokens (`<|im_end|>\n<|im_start|>assistant\n`).
+  - The other 4 residual violations are merge_sorted and count_primes (comments, both phrasings) and binary_search (print). They disappear after recomputing the last 5 tokens. The last 5 cache rows recomputed are the example's closing `"`, `<|im_end|>`, `\n`, `<|im_start|>`, `assistant`; the cache holds all prompt tokens but the final `\n`, which every condition computes fresh as the first decode input (so it never sees a removed injection).
 - RAG explanation KV surgery (`runs/ambig/surgery/summary.txt`).
   - With the explanation masked, the document-KV trace alone gives an explanation effect of 1.01 (all items) and 7.70 (lexical), against 4.17 / 13.62 for the full condition.
   - Trace by layer band: 0–11 0.02, 12–23 0.81, 24–35 0.00.
