@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 1b592679720390ff400d250a84bbc08c654f98be
+commit: d72851ec7df6cd9d8ff341aacf3675eda2b2f648
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -68,10 +68,14 @@ commit: 1b592679720390ff400d250a84bbc08c654f98be
   - commit: 1b59267; files: data/inject/main.json, scripts/inject_surgery.py, scripts/inject_surgery_report.py, src/kvmeaning/kv_surgery.py
 
 ### Next Step
-- Report the injection-removal results; offer to add them to the published page.
-  - commit: 1b59267; files: scripts/inject_surgery_report.py
+- Learning page: a writer subagent built `kv_cache_notes.html` in the session scratchpad (not in the repo) and an independent reviewer subagent is checking it; fix findings and publish.
+  - commit: d72851e; files: none
+- User idea for the next session (not started): probe the tokens after a removed contaminant (A B [C] D E: D and E computed while attending to C keep its influence after C is removed). Candidate methods proposed to the user, none chosen: per-token/per-layer K/V/residual deviation of D/E between contaminated and clean prefill; linear probes on D/E states decoding which instruction was present; per-token and per-layer re-insertion of contaminated K/V into the cleaned cache with a continuous behavior metric (e.g. log p of ```javascript vs ```python); contamination direction (mean difference) consistency across tasks and steering; distance-from-C dose via filler length. The injection run saved only generated text, so K/V capture needs a new run.
+  - commit: d72851e; files: runs/inject/surgery.jsonl, src/kvmeaning/kv_surgery.py, src/kvmeaning/inject.py
 
 ### Constraints
+- "내일 이어서 할 실험의 아이디어. 내부 프로빙을 해보는 거야 프로빙 대상은 KV 캐시로 인해 오염된 정상 context"
+  - source: user prompt, this session (idea for the next session; D E after contaminant C)
 - "가보자고!"
   - source: user prompt, this session (go-ahead for the injection-removal main run)
 - "새로운 실험 - 중간에 삽입된 instruction을 지우는 실험을 해보자."
@@ -409,3 +413,25 @@ commit: 1b592679720390ff400d250a84bbc08c654f98be
 > <status>completed</status>
 > <summary>Background command "Run full injection surgery experiment in background" completed (exit code 0)</summary>
 > </task-notification>
+
+#### 45 — 2026-11-08T15:42:48Z
+
+> 서브 에이전트 (opus-xhigh) 호출해서 학습 목적으로 infographic animation 형식으로 실험 결과를 정리해줘 - 내 개인 학습용이니 어색한 비유는 없어도 돼. 
+> 
+> 내가 이 부분에 기초가 없어서 기초부터 정리하면서 작성 부탁해. 먼저 테마와 스타일을 만들어서 나한테 체크 하고 작성 들어가자
+
+#### 46 — 2026-11-08T16:13:32Z
+
+> 이대로 만들어줘. 만들고 나서 opus xhigh 호출해서 점검까지 부탁해
+
+#### 47 — 2026-11-08T16:51:55Z
+
+> 내일 이어서 할 실험의 아이디어.
+> 
+> 내부 프로빙을 해보는 거야
+> 
+> 프로빙 대상은 KV 캐시로 인해 오염된 정상 context
+> 
+> A B C D E 중에 C가 오염원이면 A B 는 멀쩡하지만 D E는 어탠션 계산 과정에서 C의 영향을 받고 그건 C가 사라져도 그대로지.
+> 
+> D E의 영향을 추적해보고 싶어. 
