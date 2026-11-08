@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 506d47fdf064043a741d31d7b1226110449ee104
+commit: d8965ca1b230b87c8f2774e1722c6b39353a68fa
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -40,12 +40,18 @@ commit: 506d47fdf064043a741d31d7b1226110449ee104
 
 - Main run `runs/ambig/main` (git-ignored; Q3-4B, MPS, 2026-11-08 04:11–04:39 KST): 60/60 items, 3216 prompts, exit 0, no errors; 28.5 min (median 0.52 s per prompt); items 458 MB, raw 11 GB; free disk 64 GB after. Summary from session scratchpad `ambig_summary.py` saved as `runs/ambig/main/summary.txt`. Rate of choosing the cue's reading: none 0.68, unrelated-pre 0.69, correct-pre 0.80, correct-post 0.84, wrong-pre 0.55, wrong-post 0.40 (n=240 each; unrelated 480); lexical is most explanation-driven (wrong-post 0.32). Rate of following the explanation: correct 0.80/0.84 (pre/post), cueless 0.71/0.79, wrong 0.45/0.60; post > pre in every relation. Same reading under both option orders 1322/1608 = 0.82. Top next token is 'The' in 272 prompts and 'Answer' in 18 (forced choice still compares letters A/B only). Document-span l2 relative to the U_pre|U2_pre floor (median over item × cue × order): U_pre|A_pre 1.76–1.85, U_pre|B_pre 1.80–1.85, A_pre|B_pre 0.61–0.73, A_pre|pA_pre 0.83–0.97, none|U_pre 1.40 (resid, v), 1.78 (k_pre), 3.99 (k_post, includes RoPE shift). The floor compares two unrelated sentences with different wording, while A/B explanations are minimal pairs, so A_pre|B_pre < 1 does not show absence of an effect (hypothesis; needs a minimal-pair floor). Sanity none|A_post / none|B_post: 64 of 2880 tensors nonzero, max rel-l2 0.068. Answer-position attention (cue A, order AB, mean over layers/heads): explanation 0.038–0.040 vs unrelated 0.031; span 0.011, cue 0.008–0.012, question ~0.38, sink ~0.43.
   - commit: 506d47f; files: src/kvmeaning/ambig_run.py, src/kvmeaning/ambig.py
+- 292 of 3216 prompts have a non-letter top next token ('The' 272, 'Answer' 18, 'Y' 2); 270 of the 272 'The' prompts are entity items (ent-01 46, ent-13 38, ent-15 32). In the 'The' prompts p(A)+p(B) median 0.075 and forced choice follows the cue 85/164 (0.52). Excluding them raises entity pre-position rates (e.g. correct-pre 0.72→0.86, n=44) but is a selected subset. `scripts/ambig_generate.py` greedy-generates these 292 prompts (300 new tokens) into `runs/ambig/main/gen_nonletter.jsonl` (48-token run kept as `gen_nonletter_48.jsonl`); parser takes the last letter-shaped match. 276/292 resolve to a letter; 204/276 (0.74) agree with forced choice; 261 contain refusal language ("does not mention", "neither"), 193 cite historical/external knowledge before picking. Substituting generated answers for forced choice changes cue-following rates by ≤0.01 overall and ≤0.06 for entity (entity wrong-pre 0.61, wrong-post 0.45, correct-pre 0.78), so the main-run conclusions hold under generation for these prompts. Re-check: re-run the re-parse in `scripts/ambig_generate.py:parse` over the jsonl.
+  - commit: d8965ca; files: scripts/ambig_generate.py
 
 ### Next Step
-- Report the main-run results to the user; candidates: a minimal-pair noise floor (e.g. explanation templates differing in one neutral word), per-layer/per-head breakdown of correct-vs-wrong distance, relating distance and attention to whether the model followed the explanation, generation-vs-forced-choice agreement on a subset.
-  - commit: 506d47f; files: src/kvmeaning/ambig_run.py
+- Remaining candidates offered to the user: a minimal-pair noise floor (e.g. explanation templates differing in one neutral word), per-layer/per-head breakdown of correct-vs-wrong distance, relating distance and attention to whether the model followed the explanation. Entity items answer from parametric knowledge after refusing; whether to treat entity as a separate analysis is open.
+  - commit: d8965ca; files: scripts/ambig_generate.py
 
 ### Constraints
+- "ㄱㄱ"
+  - source: user prompt, this session (generate answers for the non-letter prompts)
+- "해보자."
+  - source: user prompt, this session (recompute rates excluding 'The' prompts)
 - "1번으로 진행해. 자고 올게"
   - source: user prompt, this session (store distance stats online, raw for a subset; run overnight unattended)
 - "진행"
@@ -88,6 +94,7 @@ commit: 506d47fdf064043a741d31d7b1226110449ee104
 | attempt | failure evidence | cause |
 |---|---|---|
 | `progress.py show ambiguity-rag-kv-design` | `progress.py: not a progress path` | verified: `show` takes a file path, not a bare name |
+| generate non-letter prompts with 48 new tokens | 275/292 generations hit the cap, most mid-refusal before choosing | verified: the model states the document lacks the answer, then picks from external knowledge; 300 tokens resolves 276/292 |
 
 ### Sources
 - none yet.
@@ -141,4 +148,40 @@ commit: 506d47fdf064043a741d31d7b1226110449ee104
 > <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/b23u8e1j6.output</output-file>
 > <status>completed</status>
 > <summary>Background command "Wait until the main run exits, then show its tail" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 11 — 2026-11-08T02:41:22Z
+
+> A/B 가 아니라 The가 유력했다는 게 무슨 뜻이야?
+
+#### 12 — 2026-11-08T06:41:57Z
+
+> 해보자.
+
+#### 13 — 2026-11-08T06:42:52Z
+
+> ㄱㄱ
+
+#### 14 — 2026-11-08T07:01:02Z
+
+> <task-notification>
+> <task-id>bhsn62dih</task-id>
+> <tool-use-id>toolu_01Ec5veDJmzsnP95mGNzhxsX</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bhsn62dih.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Generate answers for the non-letter prompts" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 15 — 2026-11-08T07:49:47Z
+
+> 진행 상황 봐봐
+
+#### 16 — 2026-11-08T07:58:30Z
+
+> <task-notification>
+> <task-id>bxisgouvd</task-id>
+> <tool-use-id>toolu_01VPK45ABQynnTvgpNaQ6Zxt</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bxisgouvd.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Regenerate non-letter prompts with a 300-token cap" completed (exit code 0)</summary>
 > </task-notification>
