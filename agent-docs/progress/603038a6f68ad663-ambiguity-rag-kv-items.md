@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 97ae402d0ef8800f19a10c9e8bf4de7ed5243a71
+commit: 2c443c42960a8a1bae57890dfe02ec8c7e19b8f1
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -42,14 +42,18 @@ commit: 97ae402d0ef8800f19a10c9e8bf4de7ed5243a71
   - commit: 506d47f; files: src/kvmeaning/ambig_run.py, src/kvmeaning/ambig.py
 - 292 of 3216 prompts have a non-letter top next token ('The' 272, 'Answer' 18, 'Y' 2); 270 of the 272 'The' prompts are entity items (ent-01 46, ent-13 38, ent-15 32). In the 'The' prompts p(A)+p(B) median 0.075 and forced choice follows the cue 85/164 (0.52). Excluding them raises entity pre-position rates (e.g. correct-pre 0.72→0.86, n=44) but is a selected subset. `scripts/ambig_generate.py` greedy-generates these 292 prompts (300 new tokens) into `runs/ambig/main/gen_nonletter.jsonl` (48-token run kept as `gen_nonletter_48.jsonl`); parser takes the last letter-shaped match. 276/292 resolve to a letter; 204/276 (0.74) agree with forced choice; 261 contain refusal language ("does not mention", "neither"), 193 cite historical/external knowledge before picking. Substituting generated answers for forced choice changes cue-following rates by ≤0.01 overall and ≤0.06 for entity (entity wrong-pre 0.61, wrong-post 0.45, correct-pre 0.78), so the main-run conclusions hold under generation for these prompts. Re-check: re-run the re-parse in `scripts/ambig_generate.py:parse` over the jsonl.
   - commit: d8965ca; files: scripts/ambig_generate.py
+- Minimal-pair floor: every item has `expl_neutral` {A, B}, the explanation with one meaning-neutral word changed at equal token length (lexical/entity there→here, 2 lexical the→that; pragmatic "Y's reply"→"Y's response"; structural The→This/These, str-03 a→one, str-07 a→one / that→which, str-09 the→these). Automatic the→that / that→the / in→within swaps produced ungrammatical text ("means the a", "within mind") and were replaced by hand. Checker enforces equal length and exactly one differing word. Conditions `nA_pre`, `nB_pre`; runner `--conds`. Run `runs/ambig/neutral` (git-ignored; Q3-4B, conds A_pre B_pre nA_pre nB_pre, no raw, 1440 prompts, 14.5 min, exit 0). `scripts/ambig_floor_report.py` output saved as `runs/ambig/neutral/summary.txt`. Median A_pre|B_pre over neutral floor (v l2): ALL 1.98, lexical 3.51, structural 2.09, pragmatic 1.68, entity 1.14 (k_pre entity 0.96). Neutral floor is 0.33–0.34 of the old U_pre|U2_pre floor. By layer the ratio rises from about 1.3–1.5 (layers 3–9) to about 2.0–2.2 (layers 20–35). One-word variant keeps the forced choice in 687/720 (0.95). The ratio grows with the number of words where A and B differ (v: 1 word 1.32 n=14, 10 of them entity at 0.90; 2–3 words 2.27 n=17; 4+ or reworded 2.25 n=29), so meaning difference and token-count difference are not separated (hypothesis).
+  - commit: 2c443c4; files: data/ambig_rag, scripts/check_ambig_items.py, src/kvmeaning/ambig.py, src/kvmeaning/ambig_run.py, scripts/ambig_floor_report.py
 
 ### Next Step
-- Remaining candidates offered to the user: a minimal-pair noise floor (e.g. explanation templates differing in one neutral word), per-layer/per-head breakdown of correct-vs-wrong distance, relating distance and attention to whether the model followed the explanation. Entity items answer from parametric knowledge after refusing; whether to treat entity as a separate analysis is open.
-  - commit: d8965ca; files: scripts/ambig_generate.py
+- Report the minimal-pair floor results. Open candidates: separate meaning from the number of changed tokens (e.g. floor variants with as many neutral word changes as the A/B difference), per-head breakdown of correct-vs-wrong distance, relating distance and attention to whether the model followed the explanation; whether entity items are analysed separately is open.
+  - commit: 2c443c4; files: scripts/ambig_floor_report.py
 
 ### Constraints
+- "진행하자. 얼마나 걸릴 것 같아? 오래 걸리면 (>2h) 시작말고 먼저 보고해"
+  - source: user prompt, this session (minimal-pair noise floor)
 - "ㄱㄱ"
-  - source: user prompt, this session (generate answers for the non-letter prompts)
+  - source: user prompt, this session (generate answers for the non-letter prompts; later, run the neutral-variant conditions)
 - "해보자."
   - source: user prompt, this session (recompute rates excluding 'The' prompts)
 - "1번으로 진행해. 자고 올게"
@@ -197,3 +201,13 @@ commit: 97ae402d0ef8800f19a10c9e8bf4de7ed5243a71
 #### 19 — 2026-11-08T08:16:56Z
 
 > ㄱㄱ
+
+#### 20 — 2026-11-08T08:32:05Z
+
+> <task-notification>
+> <task-id>bp0rcigr1</task-id>
+> <tool-use-id>toolu_011yWjKvXy1fPMx2iwL5DLhM</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bp0rcigr1.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Run 4B on explanation and neutral-variant conditions" completed (exit code 0)</summary>
+> </task-notification>
