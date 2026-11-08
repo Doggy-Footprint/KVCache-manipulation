@@ -19,7 +19,6 @@ TOPK = (1, 2, 4, 8)
 
 
 def cells(c, e, hdr, body, block, n_layers, dev_rank, rand4):
-    """Each cell: (name, cache, masked spans). c: prefilled caches by explanation source; e: explanation span."""
     out = []
     for E in SRC + ("mask",):
         for D in SRC:
