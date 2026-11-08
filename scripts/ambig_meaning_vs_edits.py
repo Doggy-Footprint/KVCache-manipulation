@@ -36,7 +36,6 @@ for f in R:
         a,b=ids(x),ids(y)
         pts.append(dict(item=i,type=it["type"],kind=kind,k=lev(a,b),tail=tail(a,b),v=D(t,pair,"v"),resid=D(t,pair,"resid"),k_pre=D(t,pair,"k_pre")))
 json.dump(pts, open("runs/ambig/neutral/meaning_pts.json", "w"))
-# bins by token edit distance
 def b(k): return "1" if k<=1 else "2-3" if k<=3 else "4-6" if k<=6 else "7-10" if k<=10 else "11+"
 print("# median v l2 by token edit distance (n)")
 for kind in ("neutral","para","AB"):
@@ -44,7 +43,6 @@ for kind in ("neutral","para","AB"):
     for p in pts:
         if p["kind"]==kind: g[b(p["k"])].append(p["v"])
     print(f"  {kind:8s}", "  ".join(f"{k}: {torch.tensor(v).median():.4f} (n={len(v)})" for k,v in sorted(g.items(), key=lambda x: ["1","2-3","4-6","7-10","11+"].index(x[0]))))
-# regression log v ~ log k + tail + meaning, with item fixed effect via within-item demeaning
 import itertools
 X=[];Y=[];grp=[]
 for p in pts:
