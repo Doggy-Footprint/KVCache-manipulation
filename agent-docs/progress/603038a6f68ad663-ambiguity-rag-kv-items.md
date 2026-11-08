@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: d72851ec7df6cd9d8ff341aacf3675eda2b2f648
+commit: cd83fbc25628945fcd67f715904f82d98d74c00e
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -435,3 +435,15 @@ commit: d72851ec7df6cd9d8ff341aacf3675eda2b2f648
 > A B C D E 중에 C가 오염원이면 A B 는 멀쩡하지만 D E는 어탠션 계산 과정에서 C의 영향을 받고 그건 C가 사라져도 그대로지.
 > 
 > D E의 영향을 추적해보고 싶어. 
+
+#### 48 — 2026-11-08T16:53:02Z
+
+> <task-notification>
+> <task-type>artifact-auto-react</task-type>
+> <summary>2 artifact auto-reply subscriptions paused by the interrupt (comments sent to Claude meanwhile are answered then)</summary>
+> The user's interrupt paused them and the watches are kept; when the user asks you to publish these artifacts again, that publish resumes them, or resume_replies if the user asks, as does the user's next typed message — each only on hosts that pass typed input through as the user's, and comments sent to Claude in the meantime are answered then; publishing without being asked, while handling a notification or a wake-up, leaves them paused. Do not republish or resume just to re-enable auto-replies unless the user asks.
+> </task-notification>
+
+#### 49 — 2026-11-08T16:53:11Z
+
+> Todo에 적어놔줘
