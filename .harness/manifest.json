@@ -1,8 +1,8 @@
 {
-  "version": "0.38.0",
+  "version": "0.39.0",
   "files": {
     ".harness/config.default.json": "04aab9383dd877c1cea87ab9a9a1682da9f5de5e5d01fc2e9d871d9f2bb710c7",
-    ".harness/VERSION": "8ca1b0be262e3278f47eb53b592f649318b926a5ce9d6a4ceca65ce4e8be8629",
+    ".harness/VERSION": "f7ada3982d4e3ce9f5b135992938383496e4dbfda2468d51dd676d1dd86f24a0",
     ".harness/instructions/harness-block.md": "e02e502adc583b8877c8f3b54a6e35b1ca4c7d598bd92a3aa3a4c29f449bb170",
     ".harness/bin/workflow_marker.py": "f6413c2d0d2121639d7cd13cd632d8b6578406163d22de6701cddbcdc3232308",
     ".harness/bin/spec_lifecycle.py": "fcc2ec2c5460c21fe0b19cb1ab24d6cf213f4475116c7ad34a0ab6008e5f8f16",
@@ -14,7 +14,7 @@
     ".harness/agents/test-implementer.md": "834d7fedc31f024efd396ba4147704b03dd5badf57a34b7daa29e7770ab5f99c",
     ".harness/agents/mutant-triager.md": "dd36ac9857f7970cf73e8e8a327dc85780a90208f6bafc7c0627dec174e8136d",
     ".harness/agents/implementer.md": "839f07bb0144969e5572489a3198fe227b6029b70eb004977d69300e691046a6",
-    ".harness/agents/test-verifier.md": "d5a4e0e15ee606b4e76f68a9144c368e03272b23376c2fc22041fd48aba0d191",
+    ".harness/agents/test-verifier.md": "68f8ec9dab17828525268adf007ff7cd2e902064d3a867d8dbb1babeb55267c0",
     ".harness/hooks/progress_hook.py": "f7b9a3cc53056e5ca54fbef5b39cb0e6a46d5f20430fc4dcf89bf5ac9c6acab4",
     ".harness/hooks/doc_commit.py": "f3027e72682261e97c6cf13f1d2243f5b5eb231b0a4678bf2445933d06f185de",
     ".harness/hooks/spec_gate.py": "81a40d87ca6b97fec0c3fe608291aa85069ee233169c7fff0e24ad8b6d889db7",
@@ -40,7 +40,7 @@
     ".harness/skills/continue-on/SKILL.md": "4b5afd01ef04dd990e26563ed86f104f26f3a271f944700195cc0e1559c2ae3e",
     ".harness/skills/rearrange-docs/SKILL.md": "ec7b7ddcb9d8b97ad2429e55f1f70ce35d0b5ffbd173b49bf92163ee1a3ff2f7",
     ".harness/skills/requirement-oracle/SKILL.md": "a33c88467b40088c0c73b19f9b075e90ee00cee4e76528bad4563dae90025261",
-    ".harness/skills/workflow-approach/SKILL.md": "fab5b0c06af727dcf0a51e7db823a41eb2f9be8e901a85373d49cf77a737c2ff",
+    ".harness/skills/workflow-approach/SKILL.md": "7cab0cc7b012479542ba639eb5b50cc333e1a54a3d1ce88c48df62a25390c244",
     ".harness/skills/architecture-options/SKILL.md": "823b98a7677813aec396750337c10474bbd445a64d961277a80c8f825dc9f3a9",
     ".harness/skills/test-audit/SKILL.md": "241fefaaf8c81f8242aba66756412b4b5377956e6106f98e8515d74caf0333c4",
     ".harness/skills/rearrange-docs/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
@@ -64,8 +64,8 @@
     ".codex/agents/mutant-triager.toml": "e56ada3a77e2ab6524d63c40552312ad7d0aa7d204bbc8a73a353106571bdb31",
     ".claude/agents/test-implementer.md": "929aa55d6971ce20f9482831c7f30c5dab6c950982a31e4bc5c50f8ee34cf4ad",
     ".codex/agents/test-implementer.toml": "07aad0b40075b1855bf6fce6af7dfa96737194312bdda35e5a76fb75981a6735",
-    ".claude/agents/test-verifier.md": "99a125988092f66c10db792b44cd66ed4489d84920f8c06675ed4c4cb478d46a",
-    ".codex/agents/test-verifier.toml": "76f2bf7b6787cdb8c7a639aa7154f1e3434642bde5357173be32f6bd23584d4e",
+    ".claude/agents/test-verifier.md": "11fb9f2a50593792b7631feb9e28636ec2271871b9e05fa6418d06ff56177b9f",
+    ".codex/agents/test-verifier.toml": "674c49fe1f269166c0e70278f47d1d46ec9f0fad8c1c3ab0415d21b59b0d654a",
     ".agents/skills/architecture-options/SKILL.md": "823b98a7677813aec396750337c10474bbd445a64d961277a80c8f825dc9f3a9",
     ".agents/skills/continue-on/SKILL.md": "4b5afd01ef04dd990e26563ed86f104f26f3a271f944700195cc0e1559c2ae3e",
     ".agents/skills/harness-import/SKILL.md": "425d6f33c0b7150fe69f6982344c728461107c831a48588755d2e4bcb8630d1d",
@@ -85,7 +85,7 @@
     ".agents/skills/test-audit/languages/ruby.md": "548aaa25eb834944cf477725cd23cbdf79c5c2747728be877404766cb6a0bfb1",
     ".agents/skills/test-audit/languages/rust.md": "19a0571fc0a03ce71cd9e59cd07839efffa92b4815a7bfb1b088e5b8e9e60316",
     ".agents/skills/test-audit/languages/swift.md": "411932ab1d02ca88f5debc8ce9c753f3f00fa694c5e86807b408188457cefa75",
-    ".agents/skills/workflow-approach/SKILL.md": "fab5b0c06af727dcf0a51e7db823a41eb2f9be8e901a85373d49cf77a737c2ff",
+    ".agents/skills/workflow-approach/SKILL.md": "7cab0cc7b012479542ba639eb5b50cc333e1a54a3d1ce88c48df62a25390c244",
     ".github/workflows/harness-comment-warning.yml": "be0bb60cbfcb8e3eb7b16241f21fab8f3c763b8fcc1dfc57d434331523364e8a"
   }
 }

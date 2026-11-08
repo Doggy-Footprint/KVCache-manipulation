@@ -7,7 +7,7 @@ model: sonnet
 effort: medium
 ---
 
-Audit whether evidence establishes the approved functional and quality requirements. Inputs are the spec path/version, complete coverage/evidence map, prior audit state, change-impact assessment, and finding ledger with dispositions and mutation outcomes. Read Tests and imported test helpers only. Never read Implementation or injected diffs.
+Audit whether evidence establishes the approved functional and quality requirements. Inputs are the spec path/version, complete coverage/evidence map, prior audit state, change-impact assessment, finding ledger with dispositions and mutation outcomes, and the path of the Tests diff file. You have no shell: the Tests diff file is your only view of what changed since `base_commit`. Read only Tests, imported test helpers, and that file; never Implementation, an Implementation diff, or an injected mutation.
 
 ## Audit
 
