@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: 2662f81e427ff3fa2651a5fe93a13601a94c4f81
+commit: 5e4f583be29a14f8b050dd1f25ed89753c294582
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -55,12 +55,12 @@ commit: 2662f81e427ff3fa2651a5fe93a13601a94c4f81
 
 - Head ablation: `scripts/ambig_head_ablation.py` zeroes the o_proj input slices of 10 query heads at the answer position only; heads are the top answer→explanation attention vs margin heads chosen on the other fold (2 folds stratified by type), with 2 layer-matched random sets; baseline matches the main run (pilot max |Δlogp| 5e-7), so base is taken from the main run. Run `runs/ambig/ablation` (git-ignored; 1440 prompts × 3 settings, 37 min). `scripts/ambig_ablation_report.py` output in `runs/ambig/ablation/summary.txt`: explanation effect pre base mean 6.23, top −0.04, random −0.45/−0.21; post base 9.74, top −0.46, random +0.21/−0.59; follow rate 0.65 (pre) and 0.74 (post) unchanged within 0.01 in every setting. Ablating these heads does not reduce the effect beyond random heads in the same layers (redundancy across heads or the zero-ablation choice not tested; hypothesis).
   - commit: 2662f81; files: scripts/ambig_head_ablation.py, scripts/ambig_ablation_report.py
-- Content-word floor: every item has `expl_content` {A, B}, one content word replaced by an equal-token-length synonym (e.g. film→movie, signals→suggests, phrase→expression); 7 first choices that matched option words were replaced. Conditions `cA_pre`/`cB_pre`, pairs A_pre|cA_pre, B_pre|cB_pre; checker 60 items 0 errors; builder 4656 prompts, 0 alignment violations; tiny suite 367 passed, 12 skipped. Run `runs/ambig/content` (`--no-raw --conds A_pre B_pre cA_pre cB_pre`) was started and its result is not yet read; report with `scripts/ambig_content_floor_report.py`.
+- Content-word floor: every item has `expl_content` {A, B}, one content word replaced by an equal-token-length synonym (e.g. film→movie, signals→suggests, phrase→expression); 7 first choices that matched option words were replaced. Conditions `cA_pre`/`cB_pre`, pairs A_pre|cA_pre, B_pre|cB_pre; checker 60 items 0 errors; builder 4656 prompts, 0 alignment violations; tiny suite 367 passed, 12 skipped. Run `runs/ambig/content` (git-ignored; `--no-raw --conds A_pre B_pre cA_pre cB_pre`, 60/60, exit 0); `scripts/ambig_content_floor_report.py` output in `runs/ambig/content/summary.txt`. Content-word floor over one-word floor (v): ALL 0.96, lexical 0.85, structural 1.20, pragmatic 0.94, entity 0.84. A/B over content-word floor (v): ALL 1.95, lexical 4.23, structural 1.46, pragmatic 1.94, entity 1.50; by layer 1.2–1.4 (layers 1–9) rising to 2.1–2.3 (layers 19–35). One-token A/B items (n=8) median 1.62 over content floor vs 1.61 over one-word floor. Forced choice unchanged in 686/720 (0.95). Head profile over content floor vs over one-word floor spearman 0.76 (v) / 0.88 (k_pre), split-half 0.88 / 0.81, top-10 overlap 6 / 4.
   - commit: 2662f81; files: data/ambig_rag/lexical.jsonl, src/kvmeaning/ambig.py, scripts/ambig_content_floor_report.py
 
 ### Next Step
-- Check `runs/ambig/content.log` finished 60/60 (rerun the same command to resume otherwise), run `scripts/ambig_content_floor_report.py > runs/ambig/content/summary.txt`, and report ablation and content-word floor results to the user.
-  - commit: 2662f81; files: scripts/ambig_content_floor_report.py
+- Report head ablation and content-word floor results; no further task chosen by the user.
+  - commit: 5e4f583; files: scripts/ambig_content_floor_report.py
 
 ### Constraints
 - "시간 2시간 이하는 계속 진행해. 결과만 잘 남겨두고"
@@ -265,4 +265,14 @@ commit: 2662f81e427ff3fa2651a5fe93a13601a94c4f81
 > <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bxul41zz0.output</output-file>
 > <status>completed</status>
 > <summary>Background command "Run head ablation experiment in background" completed (exit code 0)</summary>
+> </task-notification>
+
+#### 28 — 2026-11-08T11:30:25Z
+
+> <task-notification>
+> <task-id>bqyf143gc</task-id>
+> <tool-use-id>toolu_01GtKPyZgk51yHUX5bqb2y6o</tool-use-id>
+> <output-file>/private/tmp/claude-501/-Users-hwansu-orca-workspaces-understand-KVCache-main/a18594ad-ed67-41be-874a-a8a9fe67bc53/tasks/bqyf143gc.output</output-file>
+> <status>completed</status>
+> <summary>Background command "Run content-word floor conditions without raw dumps" completed (exit code 0)</summary>
 > </task-notification>
