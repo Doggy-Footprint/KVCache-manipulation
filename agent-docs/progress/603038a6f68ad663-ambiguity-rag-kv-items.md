@@ -3,7 +3,7 @@ session: a18594ad-ed67-41be-874a-a8a9fe67bc53
 before: none
 previous: agent-docs/progress-logs/b7d24e19a03c5f68-ambiguity-rag-kv-design.md
 branch: exp/pre-context
-commit: f297a31632a1e30d9d09756ac719e630134369ab
+commit: 76d3607cb4e62f8afba7d45c89618fc5e3dcaba6
 ---
 
 # Ambiguity-RAG KV experiment: datasets and items
@@ -50,11 +50,16 @@ commit: f297a31632a1e30d9d09756ac719e630134369ab
 - Per-head breakdown: `scripts/ambig_head_report.py` (neutral run + main run paraphrase pairs, no model run, 1.5 s) prints per (layer, kv head) log(A_pre|B_pre / one-word floor), item mean, layers 1–35 (layer 0 document K/V are identical across conditions, distance 0); output saved as `runs/ambig/neutral/heads.txt`, scores as `head_scores.json`. v: within a layer the max/min head ratio has median 1.13 (max 1.29) while layer means are 1.53–2.21; top heads are 1.09–1.13× their layer mean (ALL: L29h6, L30h4, L19h7, L27h7, L12h2). Split-half over items (stratified by type, 200 splits): within-layer centered head profile spearman 0.95 (v) / 0.93 (k_pre), top-10 overlap 7 (chance 0.36); a meaning-free profile log(A|nA / B|nB) gives 0.01 / -0.00. Per type centered reliability: lexical 0.94, structural 0.69, pragmatic 0.90, entity 0.93 (v); type-to-type agreement 0.00–0.66 (pragmatic vs entity 0.00). Paraphrase control (24 items): centered A/B profile vs paraphrase-over-floor profile spearman 0.44 (v) / 0.62 (k_pre), top-10 overlap 1. Within-layer spearman across 8 kv heads between centered score and answer→document attention (mean of the 4 query heads per kv head, A_pre/B_pre): layers 24–35 item median -0.15 (v) / -0.29 (k_pre), item-pooled -0.28 / -0.47; layers 1–23 near 0.
   - commit: f297a31; files: scripts/ambig_head_report.py
 
+- Behaviour link: `scripts/ambig_behavior_link.py` (no model run, 7 s; output `runs/ambig/neutral/behavior_link.txt`). Within an item, lead+span K/V do not vary with cue (causal attention, cue comes later) or option order (options come after the document), so document distance is compared across items only. Explanation effect per item = mean over cue × order of (margin_A under A explanation − margin_A under B explanation)/2, margin = log p(reading A letter) − log p(reading B letter): pre median 4.11 (lexical 13.60, structural 4.17, pragmatic 4.18, entity 1.76), post 8.73. Type-centered spearman over 60 items between effect and A_pre|B_pre distance (v over one-word floor, raw, k_pre likewise; layer bands 1–11/12–23/24–35): pre −0.12 to +0.04, post −0.16 to −0.24; within-type (n=15) values range −0.56 to +0.27 with no consistent sign. At type level, lexical has both the largest distance ratio and effect and entity the smallest (4 types). Within item × cue × relation × position, answer→explanation attention (mean over layers and query heads) vs margin toward the explanation's reading: pre +0.18 (layers 24–35 +0.21), post −0.11 (n=1008 each); with option order as the only variation: +0.09 pre, −0.13 post (504 pairs). Per query head the pre top values are +0.27–0.33 (L22–L26), split-half head-profile spearman 0.34, top-10 overlap 3 (chance 0.09); post top +0.32–0.45, 0.61, overlap 5.
+  - commit: 76d3607; files: scripts/ambig_behavior_link.py
+
 ### Next Step
-- Report the per-head breakdown. Open candidates: relating distance and attention to whether the model followed the explanation; content-word neutral floor; head ablation or patching (needs model runs, estimate before starting).
-  - commit: f297a31; files: scripts/ambig_head_report.py
+- Report the behaviour-link analysis. Open candidates: content-word neutral floor; head ablation or patching of the explanation-reading query heads (needs model runs, estimate before starting).
+  - commit: 76d3607; files: scripts/ambig_behavior_link.py
 
 ### Constraints
+- "행동과 연결 진행해보자."
+  - source: user prompt, this session (relate distance and attention to whether the model followed the explanation)
 - "진행해"
   - source: user prompt, this session (per-head breakdown)
 - "1번으로"
@@ -232,3 +237,7 @@ commit: f297a31632a1e30d9d09756ac719e630134369ab
 #### 23 — 2026-11-08T10:22:31Z
 
 > 진행해
+
+#### 24 — 2026-11-08T10:29:26Z
+
+> 행동과 연결 진행해보자.
